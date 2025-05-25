@@ -1,19 +1,19 @@
-import { FC, ReactNode } from 'react';
+import { FC, ReactNode } from "react";
 import {
   ApolloClient,
   InMemoryCache,
   ApolloProvider as BaseApolloProvider,
   HttpLink,
   from,
-} from '@apollo/client';
-import { onError } from '@apollo/client/link/error';
+} from "@apollo/client";
+import { onError } from "@apollo/client/link/error";
 
 type ApolloProviderProps = {
   children: ReactNode;
 };
 
 const httpLink = new HttpLink({
-  uri: '/graphql', // This will be proxied to http://localhost:3000/graphql
+  uri: "/graphql",
 });
 
 const errorLink = onError(({ graphQLErrors, networkError }) => {
