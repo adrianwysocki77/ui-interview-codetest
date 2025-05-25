@@ -1,6 +1,7 @@
 import { FC, ReactNode } from "react";
 import { ThemeProviderWrapper } from "./theme/ThemeContext";
 import { RouterProvider } from "./router/RouterProvider";
+import { ApolloProvider } from "./apollo/ApolloProvider";
 
 type ProvidersProps = {
   children?: ReactNode;
@@ -8,8 +9,10 @@ type ProvidersProps = {
 
 export const Providers: FC<ProvidersProps> = () => {
   return (
-    <ThemeProviderWrapper>
-      <RouterProvider />
-    </ThemeProviderWrapper>
+    <ApolloProvider>
+      <ThemeProviderWrapper>
+        <RouterProvider />
+      </ThemeProviderWrapper>
+    </ApolloProvider>
   );
 };
