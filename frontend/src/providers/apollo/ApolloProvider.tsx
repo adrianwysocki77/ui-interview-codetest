@@ -1,30 +1,32 @@
-import { FC, ReactNode } from "react";
+import { FC, ReactNode } from 'react';
 import {
   ApolloClient,
   InMemoryCache,
   ApolloProvider as BaseApolloProvider,
   HttpLink,
   from,
-} from "@apollo/client";
-import { onError } from "@apollo/client/link/error";
+} from '@apollo/client';
+import { onError } from '@apollo/client/link/error';
 
-// Error handling link TODO add toast message
-const errorLink = onError(({ graphQLErrors, networkError }) => {
-  if (graphQLErrors) {
-    graphQLErrors.forEach(({ message, locations, path }) =>
-      console.error(
-        `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
-      )
-    );
-  }
-  if (networkError) {
-    console.error(`[Network error]: ${networkError}`);
-  }
-});
+type ApolloProviderProps = {
+  children: ReactNode;
+};
 
 const httpLink = new HttpLink({
-  // TODO add env
-  uri: "/graphql", // This will be proxied to http://localhost:3000/graphql
+  uri: '/graphql', // This will be proxied to http://localhost:3000/graphql
+});
+
+const errorLink = onError(({ graphQLErrors, networkError }) => {
+  if (graphQLErrors) {
+    graphQLErrors.forEach(({ message, locations, path }) => {
+      console.error(
+        `GraphQL error: ${message}, Location: ${locations}, Path: ${path}`
+      );
+    });
+  }
+  if (networkError) {
+    console.error(`Network error: ${networkError}`);
+  }
 });
 
 const client = new ApolloClient({
@@ -32,10 +34,6 @@ const client = new ApolloClient({
   cache: new InMemoryCache(),
   connectToDevTools: true,
 });
-
-type ApolloProviderProps = {
-  children: ReactNode;
-};
 
 export const ApolloProvider: FC<ApolloProviderProps> = ({ children }) => {
   return <BaseApolloProvider client={client}>{children}</BaseApolloProvider>;

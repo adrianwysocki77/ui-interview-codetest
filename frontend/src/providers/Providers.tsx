@@ -2,6 +2,7 @@ import { FC, ReactNode } from "react";
 import { ThemeProviderWrapper } from "./theme/ThemeContext";
 import { RouterProvider } from "./router/RouterProvider";
 import { ApolloProvider } from "./apollo/ApolloProvider";
+import { SnackbarProvider } from "./snackbar/SnackbarContext";
 
 type ProvidersProps = {
   children?: ReactNode;
@@ -9,10 +10,12 @@ type ProvidersProps = {
 
 export const Providers: FC<ProvidersProps> = () => {
   return (
-    <ApolloProvider>
-      <ThemeProviderWrapper>
-        <RouterProvider />
-      </ThemeProviderWrapper>
-    </ApolloProvider>
+    <SnackbarProvider>
+      <ApolloProvider>
+        <ThemeProviderWrapper>
+          <RouterProvider />
+        </ThemeProviderWrapper>
+      </ApolloProvider>
+    </SnackbarProvider>
   );
 };
