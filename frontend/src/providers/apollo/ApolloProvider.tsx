@@ -30,6 +30,7 @@ const httpLink = new HttpLink({
 const client = new ApolloClient({
   link: from([errorLink, httpLink]),
   cache: new InMemoryCache(),
+  connectToDevTools: true,
 });
 
 type ApolloProviderProps = {
