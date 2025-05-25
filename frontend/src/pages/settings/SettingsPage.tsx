@@ -1,7 +1,7 @@
 import { FC } from "react";
 import { Typography, Container, useTheme, useMediaQuery } from "@mui/material";
 
-export const DashboardPage: FC = () => {
+export const SettingsPage: FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -15,7 +15,7 @@ export const DashboardPage: FC = () => {
           wordBreak: "break-word",
         }}
       >
-        Welcome to Security Dashboard
+        Settings
       </Typography>
     </Container>
   );
