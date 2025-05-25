@@ -6,23 +6,12 @@ import {
   TimeRange,
   CriticalityLevel,
 } from "@/types/graphql";
-import { useSnackbar } from "@/providers/snackbar/SnackbarContext";
-
-// Simple error handler using snackbar
-const useErrorHandler = () => {
-  const { showError } = useSnackbar();
-  return {
-    handleGraphQLError: (message: string) => {
-      console.error(`GraphQL Error: ${message}`);
-      showError(`GraphQL Error: ${message}`);
-    }
-  };
-};
+import { useErrorHandler } from "@/hooks/core/useErrorHandler";
 
 export const useTimeSeriesData = (
   variables: TimeSeriesDataQueryVariables = {}
 ) => {
-  const { handleGraphQLError } = useErrorHandler();
+  const { handleError } = useErrorHandler();
 
   const { data, loading, error, refetch } = useQuery<
     TimeSeriesDataResponse,
@@ -31,13 +20,7 @@ export const useTimeSeriesData = (
     variables,
     // Refresh data every 30 seconds (30000ms) for security updates
     pollInterval: 30000,
-    onError: (error) => {
-      if (error.graphQLErrors?.length) {
-        error.graphQLErrors.forEach(err => {
-          handleGraphQLError(err.message);
-        });
-      }
-    }
+    onError: handleError
   });
 
   const changeTimeRange = async (timeRange: TimeRange) => {

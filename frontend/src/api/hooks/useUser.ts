@@ -6,33 +6,13 @@ import {
   UpdateUserMutationVariables,
   UpdateUserResponse,
 } from '@/types/graphql';
-import { useSnackbar } from '@/providers/snackbar/SnackbarContext';
-
-// Simple error handler using snackbar
-const useErrorHandler = () => {
-  const { showError, showSuccess } = useSnackbar();
-  return {
-    handleGraphQLError: (message: string) => {
-      console.error(`GraphQL Error: ${message}`);
-      showError(`GraphQL Error: ${message}`);
-    },
-    showSuccess: (message: string) => {
-      showSuccess(message);
-    }
-  };
-};
+import { useErrorHandler } from '@/hooks/core/useErrorHandler';
 
 export const useUser = () => {
-  const { handleGraphQLError, showSuccess } = useErrorHandler();
+  const { handleError, showSuccess } = useErrorHandler();
   
   const { data, loading, error } = useQuery<UserResponse>(GET_USER, {
-    onError: (error) => {
-      if (error.graphQLErrors?.length) {
-        error.graphQLErrors.forEach(err => {
-          handleGraphQLError(err.message);
-        });
-      }
-    }
+    onError: handleError
   });
 
   const [updateUser, { loading: updateLoading, error: updateError }] =
@@ -42,13 +22,7 @@ export const useUser = () => {
       onCompleted: () => {
         showSuccess('User updated successfully');
       },
-      onError: (error) => {
-        if (error.graphQLErrors?.length) {
-          error.graphQLErrors.forEach(err => {
-            handleGraphQLError(err.message);
-          });
-        }
-      }
+      onError: handleError
     });
 
   return {
