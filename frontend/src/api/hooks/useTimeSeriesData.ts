@@ -6,7 +6,7 @@ import {
   TimeRange,
   CriticalityLevel,
 } from "@/types/graphql";
-import { useErrorHandler } from "@/hooks/core/useErrorHandler";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
 
 export const useTimeSeriesData = (
   variables: TimeSeriesDataQueryVariables = {}

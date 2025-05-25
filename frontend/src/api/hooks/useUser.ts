@@ -6,11 +6,11 @@ import {
   UpdateUserMutationVariables,
   UpdateUserResponse,
 } from '@/types/graphql';
-import { useErrorHandler } from '@/hooks/core/useErrorHandler';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 export const useUser = () => {
   const { handleError, showSuccess } = useErrorHandler();
-  
+
   const { data, loading, error } = useQuery<UserResponse>(GET_USER, {
     onError: handleError
   });
