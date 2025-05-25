@@ -1,5 +1,9 @@
-import { createContext, useContext, useState, FC, ReactNode } from 'react';
-import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { createContext, useContext, useState, FC, ReactNode } from "react";
+import {
+  ThemeProvider as MUIThemeProvider,
+  createTheme,
+  CssBaseline,
+} from "@mui/material";
 
 type ThemeContextType = {
   isDarkMode: boolean;
@@ -11,7 +15,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const useThemeContext = () => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useThemeContext must be used within ThemeProvider');
+    throw new Error("useThemeContext must be used within ThemeProviderWrapper");
   }
   return context;
 };
@@ -25,7 +29,7 @@ export const ThemeProviderWrapper: FC<ThemeProviderWrapperProps> = ({ children }
 
   const theme = createTheme({
     palette: {
-      mode: isDarkMode ? 'dark' : 'light',
+      mode: isDarkMode ? "dark" : "light",
     },
   });
 
@@ -35,10 +39,10 @@ export const ThemeProviderWrapper: FC<ThemeProviderWrapperProps> = ({ children }
 
   return (
     <ThemeContext.Provider value={{ isDarkMode, toggleColorMode }}>
-      <ThemeProvider theme={theme}>
+      <MUIThemeProvider theme={theme}>
         <CssBaseline />
         {children}
-      </ThemeProvider>
+      </MUIThemeProvider>
     </ThemeContext.Provider>
   );
 };
