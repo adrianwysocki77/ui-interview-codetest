@@ -24,8 +24,10 @@ type ThemeProviderWrapperProps = {
   children: ReactNode;
 };
 
-export const ThemeProviderWrapper: FC<ThemeProviderWrapperProps> = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+export const ThemeProviderWrapper: FC<ThemeProviderWrapperProps> = ({
+  children,
+}) => {
+  const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode
 
   const theme = createTheme({
     palette: {
