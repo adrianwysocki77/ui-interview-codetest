@@ -9,10 +9,10 @@ import {
   CircularProgress,
   Alert,
 } from "@mui/material";
-import { TimeSeriesChart } from "../../components/charts/TimeSeriesChart";
 import { TimeSeriesFilters } from "../../components/filters/TimeSeriesFilters";
 import { useTimeSeriesData } from "@/api/hooks/useTimeSeriesData";
 import { TimeRange, CriticalityLevel } from "@/types/graphql";
+import { TimeSeriesChart } from "@/components/charts/TimeSeriesChart";
 
 export const DashboardPage: FC = () => {
   const theme = useTheme();
@@ -65,83 +65,82 @@ export const DashboardPage: FC = () => {
   }, [currentTimeRange, currentCriticalities, refetch]);
 
   return (
-    <Container maxWidth="lg" sx={{ my: 4, px: isMobile ? 2 : 3 }}>
+    <Container maxWidth="lg" sx={{ mt: 3, mb: 4, px: isMobile ? 2 : 3 }}>
+      {/* Info panel with accent border */}
       <Paper
-        elevation={3}
+        elevation={1}
         sx={{
-          p: 3,
+          p: { xs: 2, sm: 3 },
           borderRadius: 2,
-          mb: 3,
-          bgcolor:
-            theme.palette.mode === "dark"
-              ? "background.paper"
-              : "primary.light",
-          color:
-            theme.palette.mode === "dark"
-              ? "text.primary"
-              : "primary.contrastText",
+          mb: 2.5,
+          bgcolor: theme.palette.background.paper,
+          borderLeft: `4px solid ${theme.palette.primary.main}`,
         }}
       >
-        <Typography
-          variant={isMobile ? "h5" : "h4"}
-          gutterBottom
-          sx={{
-            textAlign: isMobile ? "center" : "left",
-            wordBreak: "break-word",
-            fontWeight: "bold",
-          }}
-        >
-          Security Metrics Dashboard
-        </Typography>
-        <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
+        <Typography variant="subtitle1" sx={{ opacity: 0.9, fontWeight: 500 }}>
           Monitor your security metrics in real-time with interactive
           visualizations
         </Typography>
       </Paper>
 
-      <TimeSeriesFilters
-        timeRange={currentTimeRange}
-        criticalities={currentCriticalities}
-        onTimeRangeChange={handleTimeRangeChange}
-        onCriticalitiesChange={handleCriticalitiesChange}
-      />
+      {/* Filter controls */}
+      <Paper
+        elevation={1}
+        sx={{
+          p: { xs: 2, sm: 3 },
+          mb: 2.5,
+          borderRadius: 2,
+        }}
+      >
+        <TimeSeriesFilters
+          timeRange={currentTimeRange}
+          criticalities={currentCriticalities}
+          onTimeRangeChange={handleTimeRangeChange}
+          onCriticalitiesChange={handleCriticalitiesChange}
+        />
+      </Paper>
 
-      <Box sx={{ minHeight: "420px" }}>
-        {loading && (
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              height: "100%",
-              minHeight: "400px",
-              my: 2,
-            }}
-          >
-            <CircularProgress size={60} thickness={4} />
-          </Box>
-        )}
+      {/* Chart display */}
+      {loading && (
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: 400,
+            bgcolor: theme.palette.background.paper,
+            borderRadius: 2,
+          }}
+        >
+          <CircularProgress size={60} thickness={4} />
+        </Box>
+      )}
 
-        {error && !loading && (
-          <Alert severity="error" sx={{ mb: 2, mt: 2 }}>
-            Error loading security metrics: {error.message}
-          </Alert>
-        )}
+      {error && !loading && (
+        <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }}>
+          Error loading security metrics: {error.message}
+        </Alert>
+      )}
 
-        {!loading && !error && data?.dataPoints?.length === 0 && (
-          <Alert severity="info" sx={{ mb: 2, mt: 2 }}>
-            No data available for the selected filters. Try adjusting your
-            filter criteria.
-          </Alert>
-        )}
+      {!loading && !error && data?.dataPoints?.length === 0 && (
+        <Alert severity="info" sx={{ mb: 2.5, borderRadius: 2 }}>
+          No data available for the selected filters. Try adjusting your filter
+          criteria.
+        </Alert>
+      )}
 
-        {!loading &&
-          !error &&
-          data?.dataPoints &&
-          data.dataPoints.length > 0 && (
-            <TimeSeriesChart data={data.dataPoints} />
-          )}
-      </Box>
+      {!loading && !error && data?.dataPoints && data.dataPoints.length > 0 && (
+        <Paper
+          elevation={1}
+          sx={{
+            p: 0,
+            borderRadius: 2,
+            overflow: "hidden",
+          }}
+        >
+          <TimeSeriesChart data={data.dataPoints} />
+        </Paper>
+      )}
     </Container>
   );
 };
