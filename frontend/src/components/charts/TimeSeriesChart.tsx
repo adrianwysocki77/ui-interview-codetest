@@ -297,7 +297,10 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
         .datum(d)
         .on("mouseover", function (event, dataPoint) {
           const xPos = x(new Date(dataPoint.timestamp));
-          const minYValue = Math.min(y(dataPoint.cves), y(dataPoint.advisories));
+          const minYValue = Math.min(
+            y(dataPoint.cves),
+            y(dataPoint.advisories)
+          );
           const yPos = minYValue < 100 ? minYValue + 30 : minYValue - 90;
 
           tooltip
@@ -346,7 +349,10 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
         .datum(d)
         .on("mouseover", function (event, dataPoint) {
           const xPos = x(new Date(dataPoint.timestamp));
-          const minYValue = Math.min(y(dataPoint.cves), y(dataPoint.advisories));
+          const minYValue = Math.min(
+            y(dataPoint.cves),
+            y(dataPoint.advisories)
+          );
           const yPos = minYValue < 100 ? minYValue + 30 : minYValue - 90;
 
           tooltip
@@ -403,7 +409,7 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
       .on("mouseleave", function () {
         hoverLine.style("opacity", 0);
         tooltip.style("opacity", 0);
-        
+
         // Reset points
         points
           .selectAll("circle:not(.hit-area)")
