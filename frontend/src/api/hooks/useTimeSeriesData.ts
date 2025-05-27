@@ -20,15 +20,23 @@ export const useTimeSeriesData = (
     variables,
     // Refresh data every 30 seconds (30000ms) for security updates
     pollInterval: 30000,
-    onError: handleError
+    onError: handleError,
   });
 
   const changeTimeRange = async (timeRange: TimeRange) => {
-    await refetch({ ...variables, timeRange });
+    const currentVariables = {
+      timeRange,
+      criticalities: variables.criticalities,
+    };
+    await refetch(currentVariables);
   };
 
   const changeCriticalities = async (criticalities: CriticalityLevel[]) => {
-    await refetch({ ...variables, criticalities });
+    const currentVariables = {
+      timeRange: variables.timeRange,
+      criticalities,
+    };
+    await refetch(currentVariables);
   };
 
   return {
