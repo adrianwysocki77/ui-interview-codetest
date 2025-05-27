@@ -50,11 +50,20 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
     // Clear previous contents
     svg.selectAll("*").remove();
 
-    // Dimensions & margins
+    // Dimensions & margins - adjust for mobile
     const width = svgRef.current.clientWidth || 800; // fallback
-    const margin = { top: 20, right: 50, bottom: 40, left: 60 };
+
+    // Adjust margins based on screen width for better mobile display
+    const isMobile = width < 500;
+    const margin = isMobile
+      ? { top: 15, right: 30, bottom: 30, left: 40 } // Smaller margins on mobile
+      : { top: 20, right: 50, bottom: 40, left: 60 };
+
+    // For mobile, use a taller chart relative to the width for better visibility
+    const adjustedHeight = isMobile ? Math.max(height, width * 0.8) : height;
+
     const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
+    const innerHeight = adjustedHeight - margin.top - margin.bottom;
 
     // Parse ISO timestamp strings to Date objects
     const parseDate = (d: string): Date => new Date(d);
@@ -87,7 +96,7 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
 
     // Main group translated by margins
     const g = svg
-      .attr("viewBox", `0 0 ${width} ${height}`)
+      .attr("viewBox", `0 0 ${width} ${adjustedHeight}`)
       .attr("preserveAspectRatio", "xMinYMin meet")
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
@@ -110,24 +119,33 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
     // Axes
     g.append("g")
       .attr("transform", `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(x).ticks(6).tickSizeOuter(0))
+      .call(
+        d3
+          .axisBottom(x)
+          .ticks(isMobile ? 4 : 6)
+          .tickSizeOuter(0)
+      ) // Fewer ticks on mobile
       .attr("color", axisColor)
+      .attr("font-size", isMobile ? "10px" : "12px") // Smaller font on mobile
       .append("text")
       .attr("fill", axisColor)
       .attr("text-anchor", "middle")
       .attr("x", innerWidth / 2)
-      .attr("y", 35)
+      .attr("y", 30)
+      .attr("font-size", isMobile ? "11px" : "12px") // Adjusted label size
       .text("Date");
 
     g.append("g")
-      .call(d3.axisLeft(y).ticks(6))
+      .call(d3.axisLeft(y).ticks(isMobile ? 4 : 6)) // Fewer ticks on mobile
       .attr("color", axisColor)
+      .attr("font-size", isMobile ? "10px" : "12px") // Smaller font on mobile
       .append("text")
       .attr("fill", axisColor)
       .attr("text-anchor", "middle")
       .attr("transform", "rotate(-90)")
       .attr("x", -innerHeight / 2)
-      .attr("y", -40)
+      .attr("y", isMobile ? -30 : -40) // Closer to axis on mobile
+      .attr("font-size", isMobile ? "11px" : "12px") // Adjusted label size
       .text("Count");
 
     // Add legend
@@ -165,8 +183,21 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
       .text("Advisories")
       .attr("fill", axisColor);
 
-    // Create tooltip
-    const tooltip = g.append("g").attr("class", "tooltip").style("opacity", 0);
+    // First, create a separate top-level group for all data visualization elements
+    const dataVisGroup = g.append("g").attr("class", "data-visualization");
+
+    // Now create another top-level group that will be rendered AFTER the data visualization
+    // This ensures the tooltip layer is always on top
+    const tooltipLayer = g
+      .append("g")
+      .attr("class", "tooltip-layer")
+      .style("pointer-events", "none"); // Make sure tooltip layer doesn't block interactions
+
+    // Create the tooltip in this separate layer
+    const tooltip = tooltipLayer
+      .append("g")
+      .attr("class", "tooltip")
+      .style("opacity", 0);
 
     tooltip
       .append("rect")
@@ -210,8 +241,8 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
       });
     };
 
-    // Vertical hover line (crosshair)
-    const hoverLine = g
+    // Vertical hover line (crosshair) - add it to the tooltip layer so it's always on top
+    const hoverLine = tooltipLayer
       .append("line")
       .attr("class", "hover-line")
       .attr("y1", 0)
@@ -223,7 +254,7 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
       .style("opacity", 0);
 
     // Lines with animation
-    const cveLine = g
+    const cveLine = dataVisGroup
       .append("path")
       .datum(data)
       .attr("fill", "none")
@@ -241,7 +272,7 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
       .ease(d3.easeLinear)
       .attr("stroke-dashoffset", 0);
 
-    const advisoryLine = g
+    const advisoryLine = dataVisGroup
       .append("path")
       .datum(data)
       .attr("fill", "none")
@@ -259,7 +290,7 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
       .ease(d3.easeLinear)
       .attr("stroke-dashoffset", 0);
 
-    const points = g
+    const points = dataVisGroup
       .selectAll<SVGGElement, DataPoint>(".data-point")
       .data(data)
       .enter()
@@ -445,11 +476,19 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
       });
   }, [data, height, theme]); // Added theme to dependencies
 
+  // We need to memoize the isMobile check for the component render
+  const containerWidth =
+    typeof window !== "undefined" ? window.innerWidth : 800;
+  const isMobileView = containerWidth < 500;
+  const mobileHeight = isMobileView
+    ? Math.max(height, containerWidth * 0.8)
+    : height;
+
   return (
     <Paper
       elevation={2}
       sx={{
-        p: 2,
+        p: isMobileView ? 1.5 : 2,
         borderRadius: 2,
         position: "relative",
         overflow: "hidden",
@@ -459,11 +498,16 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
         Security Metrics Timeline
       </Typography>
 
-      <Box sx={{ position: "relative" }}>
+      <Box
+        sx={{
+          position: "relative",
+          minHeight: isMobileView ? mobileHeight : "auto",
+        }}
+      >
         <svg
           ref={svgRef}
           width="100%"
-          height={height}
+          height={mobileHeight}
           tabIndex={-1} // Make SVG non-focusable
           style={{
             display: "block",

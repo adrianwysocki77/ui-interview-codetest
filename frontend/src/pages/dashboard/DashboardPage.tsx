@@ -83,64 +83,80 @@ export const DashboardPage: FC = () => {
         </Typography>
       </Paper>
 
-      {/* Filter controls */}
+      {/* Unified security metrics dashboard */}
       <Paper
         elevation={1}
         sx={{
-          p: { xs: 2, sm: 3 },
-          mb: 2.5,
           borderRadius: 2,
+          overflow: "hidden",
+          mb: 2.5,
         }}
       >
-        <TimeSeriesFilters
-          timeRange={currentTimeRange}
-          criticalities={currentCriticalities}
-          onTimeRangeChange={handleTimeRangeChange}
-          onCriticalitiesChange={handleCriticalitiesChange}
-        />
-      </Paper>
-
-      {/* Chart display */}
-      {loading && (
+        {/* Dashboard header with title */}
         <Box
           sx={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            height: 400,
-            bgcolor: theme.palette.background.paper,
-            borderRadius: 2,
+            p: { xs: 2, sm: 3 },
+            borderBottom: `1px solid ${theme.palette.divider}`,
+            bgcolor: theme.palette.mode === "dark" ? "#1e1e1e" : "#f5f5f5",
           }}
         >
-          <CircularProgress size={60} thickness={4} />
+          <Typography variant="h6" sx={{ fontWeight: "medium" }}>
+            Security Metrics Dashboard
+          </Typography>
         </Box>
-      )}
 
-      {error && !loading && (
-        <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }}>
-          Error loading security metrics: {error.message}
-        </Alert>
-      )}
-
-      {!loading && !error && data?.dataPoints?.length === 0 && (
-        <Alert severity="info" sx={{ mb: 2.5, borderRadius: 2 }}>
-          No data available for the selected filters. Try adjusting your filter
-          criteria.
-        </Alert>
-      )}
-
-      {!loading && !error && data?.dataPoints && data.dataPoints.length > 0 && (
-        <Paper
-          elevation={1}
+        {/* Filter controls section */}
+        <Box
           sx={{
-            p: 0,
-            borderRadius: 2,
-            overflow: "hidden",
+            p: { xs: 2, sm: 3 },
+            borderBottom: `1px solid ${theme.palette.divider}`,
           }}
         >
-          <TimeSeriesChart data={data.dataPoints} />
-        </Paper>
-      )}
+          <TimeSeriesFilters
+            timeRange={currentTimeRange}
+            criticalities={currentCriticalities}
+            onTimeRangeChange={handleTimeRangeChange}
+            onCriticalitiesChange={handleCriticalitiesChange}
+          />
+        </Box>
+
+        {/* Chart display section */}
+        <Box sx={{ p: { xs: 1, sm: 2 } }}>
+          {loading && (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: 400,
+                width: "100%",
+              }}
+            >
+              <CircularProgress size={60} thickness={4} />
+            </Box>
+          )}
+
+          {error && !loading && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: 1 }}>
+              Error loading security metrics: {error.message}
+            </Alert>
+          )}
+
+          {!loading && !error && data?.dataPoints?.length === 0 && (
+            <Alert severity="info" sx={{ mb: 2, borderRadius: 1 }}>
+              No data available for the selected filters. Try adjusting your
+              filter criteria.
+            </Alert>
+          )}
+
+          {!loading &&
+            !error &&
+            data?.dataPoints &&
+            data.dataPoints.length > 0 && (
+              <TimeSeriesChart data={data.dataPoints} />
+            )}
+        </Box>
+      </Paper>
     </Container>
   );
 };

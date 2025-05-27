@@ -3,9 +3,9 @@ import {
   Paper,
   Typography,
   Stack,
+  Box,
   ToggleButton,
   ToggleButtonGroup,
-  Chip,
   useTheme,
 } from "@mui/material";
 import { TimeRange, CriticalityLevel } from "@/types/graphql";
@@ -29,10 +29,10 @@ export const TimeSeriesFilters: FC<TimeSeriesFiltersProps> = ({
 
   // Map the enum values to more readable display text
   const timeRangeLabels: Record<TimeRange, string> = {
-    [TimeRange.THREE_DAYS]: "3 Days",
-    [TimeRange.SEVEN_DAYS]: "7 Days",
-    [TimeRange.FOURTEEN_DAYS]: "14 Days",
-    [TimeRange.THIRTY_DAYS]: "30 Days",
+    [TimeRange.THREE_DAYS]: "3 DAYS",
+    [TimeRange.SEVEN_DAYS]: "7 DAYS",
+    [TimeRange.FOURTEEN_DAYS]: "14 DAYS",
+    [TimeRange.THIRTY_DAYS]: "30 DAYS",
   };
 
   // Map criticality levels to colors
@@ -46,10 +46,14 @@ export const TimeSeriesFilters: FC<TimeSeriesFiltersProps> = ({
 
   return (
     <Paper
-      tabIndex={-1} // Prevent container from grabbing focus unexpectedly
+      tabIndex={-1}
       elevation={2}
-      sx={{ p: 2, borderRadius: 2, mb: 2 }}
-      className="filter-container"
+      sx={{
+        p: 2,
+        borderRadius: 2,
+        mb: 2,
+        backgroundColor: theme.palette.mode === "dark" ? "#1e1e1e" : "#f5f5f5",
+      }}
     >
       <Typography variant="h6" sx={{ mb: 2, fontWeight: "medium" }}>
         Filter Security Metrics
@@ -66,7 +70,7 @@ export const TimeSeriesFilters: FC<TimeSeriesFiltersProps> = ({
         size="small"
         value={timeRange}
         onChange={(event, newValue) => {
-          event.preventDefault(); // Attempt to prevent scroll on change
+          event.preventDefault();
           if (newValue) {
             onTimeRangeChange(newValue);
           }
@@ -74,53 +78,40 @@ export const TimeSeriesFilters: FC<TimeSeriesFiltersProps> = ({
         aria-label="Time range"
         sx={{
           mb: 3,
-          display: "block",
+          display: "flex",
+          width: "100%",
           "& .MuiToggleButton-root": {
-            px: 2,
-            py: 0.5,
-            borderRadius: "4px !important",
-            mx: 0.5, // Creates space between buttons
-            border: `1px solid ${theme.palette.divider}`, // Default border for all
-            transition: theme.transitions.create([
-              "background-color",
-              "border-color",
-              "color",
-            ]),
+            flex: 1,
+            py: 0.75,
+            fontSize: "0.75rem",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+            color: theme.palette.text.secondary,
+            border: `1px solid ${theme.palette.divider}`,
             "&.Mui-selected": {
-              bgcolor: "primary.main",
-              color: "primary.contrastText",
-              borderColor: theme.palette.primary.main, // Match border to background or use 'transparent'
+              bgcolor: theme.palette.primary.main,
+              color: theme.palette.primary.contrastText,
+              borderColor: theme.palette.primary.main,
+              fontWeight: 600,
               "&:hover": {
-                bgcolor: "primary.dark",
-                borderColor: theme.palette.primary.dark, // Keep border consistent on hover
+                bgcolor: theme.palette.primary.dark,
               },
             },
-            "&:not(.Mui-selected)": {
-              borderColor:
+            "&:hover": {
+              bgcolor:
                 theme.palette.mode === "dark"
-                  ? theme.palette.grey[700]
-                  : theme.palette.grey[400],
-              color: theme.palette.text.secondary,
+                  ? "rgba(255, 255, 255, 0.08)"
+                  : "rgba(0, 0, 0, 0.04)",
             },
-            "&:not(.Mui-selected):hover": {
-              backgroundColor: theme.palette.action.hover,
-              borderColor:
-                theme.palette.mode === "dark"
-                  ? theme.palette.grey[600]
-                  : theme.palette.grey[300],
-            },
+          },
+          "& .MuiToggleButtonGroup-grouped:not(:first-of-type)": {
+            borderLeft: `1px solid ${theme.palette.divider}`,
           },
         }}
       >
         {Object.values(TimeRange).map((r) => (
-          <ToggleButton
-            key={r}
-            value={r}
-            aria-label={r}
-            onMouseDown={(e) => {
-              e.preventDefault();
-            }}
-          >
+          <ToggleButton key={r} value={r} aria-label={r}>
             {timeRangeLabels[r]}
           </ToggleButton>
         ))}
@@ -132,44 +123,69 @@ export const TimeSeriesFilters: FC<TimeSeriesFiltersProps> = ({
         <Typography variant="subtitle2">Criticality Levels</Typography>
       </Stack>
 
-      <Stack direction="row" spacing={1} flexWrap="wrap">
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
+          gap: 1,
+          width: "100%",
+        }}
+      >
         {Object.values(CriticalityLevel).map((level) => {
           const isSelected = criticalities.includes(level);
           return (
-            <Chip
+            <Box
               key={level}
-              label={level}
-              clickable
-              component="div" // Use div instead of button to prevent form submission behavior
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
-                (e.currentTarget as HTMLElement).blur(); // Remove focus from the chip
                 const newCriticalities = isSelected
                   ? criticalities.filter((c) => c !== level)
                   : [...criticalities, level];
 
-                // Ensure we always have at least one level selected
                 if (newCriticalities.length > 0) {
                   onCriticalitiesChange(newCriticalities);
                 }
               }}
               sx={{
-                my: 0.5,
+                p: 1,
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "32px",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                borderRadius: 1,
+                cursor: "pointer",
+                transition: theme.transitions.create([
+                  "background-color",
+                  "box-shadow",
+                  "border-color",
+                ]),
                 bgcolor: isSelected ? criticalityColors[level] : "transparent",
-                color: isSelected ? "white" : "text.primary",
-                borderColor: criticalityColors[level],
-                border: "1px solid",
+                color: isSelected ? "#fff" : theme.palette.text.primary,
+                border: `1px solid ${
+                  isSelected ? criticalityColors[level] : theme.palette.divider
+                }`,
                 "&:hover": {
                   bgcolor: isSelected
-                    ? criticalityColors[level] + "99" // Adding transparency
-                    : criticalityColors[level] + "22",
+                    ? criticalityColors[level]
+                    : theme.palette.mode === "dark"
+                    ? "rgba(255, 255, 255, 0.08)"
+                    : "rgba(0, 0, 0, 0.04)",
+                  boxShadow: isSelected
+                    ? "none"
+                    : `0 0 0 1px ${criticalityColors[level]}`,
                 },
               }}
-            />
+            >
+              {level}
+            </Box>
           );
         })}
-      </Stack>
+      </Box>
     </Paper>
   );
 };
