@@ -3,87 +3,81 @@ import {
   AppBar,
   Toolbar,
   Typography,
-  Button,
-  Stack,
   useTheme,
-  useMediaQuery,
-  IconButton,
-  Menu,
-  MenuItem,
+  Avatar,
+  Tooltip,
+  CircularProgress,
+  Stack,
 } from "@mui/material";
 import { ThemeToggle } from "./ThemeToggle";
-import { Link as RouterLink } from "react-router-dom";
-import MenuIcon from "@mui/icons-material/Menu";
-import { useState } from "react";
+import { useUser } from "@/api/hooks/useUser";
 
 export const Header: FC = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const { user, loading } = useUser();
 
-  const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
+  // Generate initials from user name
+  const getInitials = (name?: string): string => {
+    if (!name) return "U";
 
-  const handleClose = () => {
-    setAnchorEl(null);
+    const nameParts = name.split(" ");
+    if (nameParts.length === 1) {
+      return name.substring(0, 2).toUpperCase();
+    }
+
+    return (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
   };
 
   return (
-    <AppBar position="static">
-      <Toolbar>
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+    <AppBar
+      position="static"
+      elevation={0}
+      sx={{
+        borderBottom: `1px solid ${theme.palette.divider}`,
+      }}
+    >
+      <Toolbar sx={{ px: { xs: 3, sm: 5 }, py: { xs: 1.5, sm: 2 } }}>
+        <Typography
+          variant="h6"
+          component="div"
+          sx={{
+            flexGrow: 1,
+            fontWeight: 500,
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <span role="img" aria-label="security" style={{ marginRight: "8px" }}>
+            🔒
+          </span>
           Security Dashboard
         </Typography>
-        {isMobile ? (
-          <>
-            <IconButton
-              size="large"
-              edge="start"
-              color="inherit"
-              aria-label="menu"
-              onClick={handleMenu}
-              sx={{ ml: 2 }}
-            >
-              <MenuIcon />
-            </IconButton>
-            <Menu
-              anchorEl={anchorEl}
-              anchorOrigin={{
-                vertical: "top",
-                horizontal: "right",
-              }}
-              keepMounted
-              transformOrigin={{
-                vertical: "top",
-                horizontal: "right",
-              }}
-              open={Boolean(anchorEl)}
-              onClose={handleClose}
-            >
-              <MenuItem component={RouterLink} to="/" onClick={handleClose}>
-                Dashboard
-              </MenuItem>
-              <MenuItem
-                component={RouterLink}
-                to="/settings"
-                onClick={handleClose}
+
+        {/* Controls section with proper spacing */}
+        <Stack direction="row" spacing={2.5} alignItems="center">
+          {/* Theme toggle */}
+          <ThemeToggle />
+
+          {/* User avatar from GraphQL data */}
+          {loading ? (
+            <CircularProgress size={24} color="inherit" />
+          ) : (
+            <Tooltip title={user?.name || "User"}>
+              <Avatar
+                sx={{
+                  bgcolor: theme.palette.primary.dark,
+                  color: theme.palette.primary.contrastText,
+                  fontWeight: "medium",
+                  textTransform: "uppercase",
+                  width: 38,
+                  height: 38,
+                }}
               >
-                Settings
-              </MenuItem>
-            </Menu>
-          </>
-        ) : (
-          <Stack direction="row" spacing={2} sx={{ mr: 2 }}>
-            <Button color="inherit" component={RouterLink} to="/">
-              Dashboard
-            </Button>
-            <Button color="inherit" component={RouterLink} to="/settings">
-              Settings
-            </Button>
-          </Stack>
-        )}
-        <ThemeToggle />
+                {getInitials(user?.name)}
+              </Avatar>
+            </Tooltip>
+          )}
+        </Stack>
       </Toolbar>
     </AppBar>
   );

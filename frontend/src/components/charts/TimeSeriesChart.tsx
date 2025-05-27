@@ -1,7 +1,14 @@
 import { FC, useEffect, useRef } from "react";
 import * as d3 from "d3";
-import { DataPoint } from "@/types/graphql";
 import { Box, Paper, Typography, useTheme } from "@mui/material";
+
+// Define the shape of our data points
+interface DataPoint {
+  timestamp: string;
+  cves: number;
+  advisories: number;
+  id?: string; // Optional ID property that might be in the original DataPoint
+}
 
 export type TimeSeriesChartProps = {
   /**
@@ -43,14 +50,23 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
     // Clear previous contents
     svg.selectAll("*").remove();
 
-    // Dimensions & margins
+    // Dimensions & margins - adjust for mobile
     const width = svgRef.current.clientWidth || 800; // fallback
-    const margin = { top: 20, right: 50, bottom: 40, left: 60 };
+
+    // Adjust margins based on screen width for better mobile display
+    const isMobile = width < 500;
+    const margin = isMobile
+      ? { top: 15, right: 30, bottom: 30, left: 40 } // Smaller margins on mobile
+      : { top: 20, right: 50, bottom: 40, left: 60 };
+
+    // For mobile, use a taller chart relative to the width for better visibility
+    const adjustedHeight = isMobile ? Math.max(height, width * 0.8) : height;
+
     const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
+    const innerHeight = adjustedHeight - margin.top - margin.bottom;
 
     // Parse ISO timestamp strings to Date objects
-    const parseDate = (d: string) => new Date(d);
+    const parseDate = (d: string): Date => new Date(d);
 
     // Scales
     const x = d3
@@ -59,7 +75,11 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
       .range([0, innerWidth]);
 
     const yMax = d3.max(data, (d) => Math.max(d.cves, d.advisories)) ?? 0;
-    const y = d3.scaleLinear().domain([0, yMax]).nice().range([innerHeight, 0]);
+    const y = d3
+      .scaleLinear()
+      .domain([0, yMax * 1.1])
+      .nice()
+      .range([innerHeight, 0]);
 
     // Line generators
     const lineCves = d3
@@ -76,7 +96,7 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
 
     // Main group translated by margins
     const g = svg
-      .attr("viewBox", `0 0 ${width} ${height}`)
+      .attr("viewBox", `0 0 ${width} ${adjustedHeight}`)
       .attr("preserveAspectRatio", "xMinYMin meet")
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
@@ -99,24 +119,33 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
     // Axes
     g.append("g")
       .attr("transform", `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(x).ticks(6).tickSizeOuter(0))
+      .call(
+        d3
+          .axisBottom(x)
+          .ticks(isMobile ? 4 : 6)
+          .tickSizeOuter(0)
+      ) // Fewer ticks on mobile
       .attr("color", axisColor)
+      .attr("font-size", isMobile ? "10px" : "12px") // Smaller font on mobile
       .append("text")
       .attr("fill", axisColor)
       .attr("text-anchor", "middle")
       .attr("x", innerWidth / 2)
-      .attr("y", 35)
+      .attr("y", 30)
+      .attr("font-size", isMobile ? "11px" : "12px") // Adjusted label size
       .text("Date");
 
     g.append("g")
-      .call(d3.axisLeft(y).ticks(6))
+      .call(d3.axisLeft(y).ticks(isMobile ? 4 : 6)) // Fewer ticks on mobile
       .attr("color", axisColor)
+      .attr("font-size", isMobile ? "10px" : "12px") // Smaller font on mobile
       .append("text")
       .attr("fill", axisColor)
       .attr("text-anchor", "middle")
       .attr("transform", "rotate(-90)")
       .attr("x", -innerHeight / 2)
-      .attr("y", -40)
+      .attr("y", isMobile ? -30 : -40) // Closer to axis on mobile
+      .attr("font-size", isMobile ? "11px" : "12px") // Adjusted label size
       .text("Count");
 
     // Add legend
@@ -154,79 +183,38 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
       .text("Advisories")
       .attr("fill", axisColor);
 
-    // Vertical hover line (crosshair)
-    const hoverLine = g
-      .append("line")
-      .attr("class", "hover-line")
-      .attr("y1", 0)
-      .attr("y2", innerHeight)
-      .attr("stroke", axisColor)
-      .attr("stroke-width", 1)
-      .attr("stroke-dasharray", "4,4")
-      .style("pointer-events", "none")
-      .style("opacity", 0);
+    // First, create a separate top-level group for all data visualization elements
+    const dataVisGroup = g.append("g").attr("class", "data-visualization");
 
-    // Lines with animation
-    const cveLine = g
-      .append("path")
-      .datum(data)
-      .attr("fill", "none")
-      .attr("stroke", primaryColor)
-      .attr("stroke-width", 2)
-      .attr("d", lineCves);
+    // Now create another top-level group that will be rendered AFTER the data visualization
+    // This ensures the tooltip layer is always on top
+    const tooltipLayer = g
+      .append("g")
+      .attr("class", "tooltip-layer")
+      .style("pointer-events", "none"); // Make sure tooltip layer doesn't block interactions
 
-    // Animate path
-    const cvePathLength = cveLine.node()?.getTotalLength() || 0;
-    cveLine
-      .attr("stroke-dasharray", cvePathLength)
-      .attr("stroke-dashoffset", cvePathLength)
-      .transition()
-      .duration(1000)
-      .ease(d3.easeLinear)
-      .attr("stroke-dashoffset", 0);
-
-    const advisoryLine = g
-      .append("path")
-      .datum(data)
-      .attr("fill", "none")
-      .attr("stroke", errorColor)
-      .attr("stroke-width", 2)
-      .attr("d", lineAdvisories);
-
-    // Animate path
-    const advisoryPathLength = advisoryLine.node()?.getTotalLength() || 0;
-    advisoryLine
-      .attr("stroke-dasharray", advisoryPathLength)
-      .attr("stroke-dashoffset", advisoryPathLength)
-      .transition()
-      .duration(1000)
-      .ease(d3.easeLinear)
-      .attr("stroke-dashoffset", 0);
-
-    // Create tooltip elements - make it more visible and ensure it doesn't interfere with mouse events
-    const tooltip = svg
+    // Create the tooltip in this separate layer
+    const tooltip = tooltipLayer
       .append("g")
       .attr("class", "tooltip")
-      .style("opacity", 0)
-      .style("pointer-events", "none");
+      .style("opacity", 0);
 
     tooltip
       .append("rect")
-      .attr("width", 160)
-      .attr("height", 80)
-      .attr("rx", 5)
-      .attr("ry", 5)
+      .attr("width", 150)
+      .attr("height", 70)
       .attr("fill", theme.palette.background.paper)
+      .attr("rx", 4)
+      .attr("ry", 4)
       .attr("stroke", theme.palette.divider)
-      .attr("stroke-width", 1.5) // Make border more visible
-      .style("filter", "drop-shadow(0px 2px 3px rgba(0,0,0,0.2))");
+      .attr("stroke-width", 1);
 
     const tooltipTitle = tooltip
       .append("text")
       .attr("x", 10)
       .attr("y", 20)
-      .attr("font-size", "12px")
       .attr("font-weight", "bold")
+      .attr("font-size", "12px")
       .attr("fill", theme.palette.text.primary);
 
     const tooltipCVEs = tooltip
@@ -244,7 +232,7 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
       .attr("fill", errorColor);
 
     // Format date for tooltips
-    const formatDate = (isoString: string) => {
+    const formatDate = (isoString: string): string => {
       const date = new Date(isoString);
       return date.toLocaleDateString("en-US", {
         month: "short",
@@ -253,8 +241,57 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
       });
     };
 
-    const points = g
-      .selectAll(".data-point")
+    // Vertical hover line (crosshair) - add it to the tooltip layer so it's always on top
+    const hoverLine = tooltipLayer
+      .append("line")
+      .attr("class", "hover-line")
+      .attr("y1", 0)
+      .attr("y2", innerHeight)
+      .attr("stroke", axisColor)
+      .attr("stroke-width", 1)
+      .attr("stroke-dasharray", "4,4")
+      .style("pointer-events", "none")
+      .style("opacity", 0);
+
+    // Lines with animation
+    const cveLine = dataVisGroup
+      .append("path")
+      .datum(data)
+      .attr("fill", "none")
+      .attr("stroke", primaryColor)
+      .attr("stroke-width", 2)
+      .attr("d", lineCves);
+
+    // Animate path
+    const cvePathLength = cveLine.node()?.getTotalLength() || 0;
+    cveLine
+      .attr("stroke-dasharray", cvePathLength)
+      .attr("stroke-dashoffset", cvePathLength)
+      .transition()
+      .duration(1000)
+      .ease(d3.easeLinear)
+      .attr("stroke-dashoffset", 0);
+
+    const advisoryLine = dataVisGroup
+      .append("path")
+      .datum(data)
+      .attr("fill", "none")
+      .attr("stroke", errorColor)
+      .attr("stroke-width", 2)
+      .attr("d", lineAdvisories);
+
+    // Animate path
+    const advisoryPathLength = advisoryLine.node()?.getTotalLength() || 0;
+    advisoryLine
+      .attr("stroke-dasharray", advisoryPathLength)
+      .attr("stroke-dashoffset", advisoryPathLength)
+      .transition()
+      .duration(1000)
+      .ease(d3.easeLinear)
+      .attr("stroke-dashoffset", 0);
+
+    const points = dataVisGroup
+      .selectAll<SVGGElement, DataPoint>(".data-point")
       .data(data)
       .enter()
       .append("g")
@@ -263,39 +300,41 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
 
     points
       .append("circle")
-      .attr("cx", (d) => x(new Date(d.timestamp)))
-      .attr("cy", (d) => y(d.cves))
+      .attr("cx", (d: DataPoint) => x(new Date(d.timestamp)))
+      .attr("cy", (d: DataPoint) => y(d.cves))
       .attr("r", 0)
       .attr("fill", theme.palette.primary.main)
       .transition()
-      .delay((_, i) => i * 100)
+      .delay((_d, i: number) => i * 100)
       .duration(500)
       .attr("r", 4);
 
     points
       .append("circle")
-      .attr("cx", (d) => x(new Date(d.timestamp)))
-      .attr("cy", (d) => y(d.advisories))
+      .attr("cx", (d: DataPoint) => x(new Date(d.timestamp)))
+      .attr("cy", (d: DataPoint) => y(d.advisories))
       .attr("r", 0)
       .attr("fill", theme.palette.error.main)
       .transition()
-      .delay((_, i) => i * 100)
+      .delay((_d, i: number) => i * 100)
       .duration(500)
       .attr("r", 4);
 
-    points.each(function (d) {
+    // Add hit areas and interactions
+    points.each(function (d: DataPoint) {
       const pointGroup = d3.select(this);
 
+      // Create hit area for CVE data points
       pointGroup
         .append("circle")
-        .attr("cx", (d) => x(new Date(d.timestamp)))
-        .attr("cy", (d) => y(d.cves))
+        .attr("cx", () => x(new Date(d.timestamp)))
+        .attr("cy", () => y(d.cves))
         .attr("r", 15)
         .attr("fill", "transparent")
         .attr("class", "hit-area")
         .style("pointer-events", "all")
         .datum(d)
-        .on("mouseover", function (event, dataPoint) {
+        .on("mouseover", function (event: d3.D3Event, dataPoint: DataPoint) {
           const xPos = x(new Date(dataPoint.timestamp));
           const minYValue = Math.min(
             y(dataPoint.cves),
@@ -313,41 +352,50 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
 
           hoverLine.attr("x1", xPos).attr("x2", xPos).style("opacity", 1);
 
+          // Highlight the data point
           points
-            .selectAll("circle:not(.hit-area)")
-            .attr("r", (p) => (p.timestamp === dataPoint.timestamp ? 6 : 4))
-            .attr("stroke", (p) =>
-              p.timestamp === dataPoint.timestamp
-                ? theme.palette.background.paper
-                : "none"
-            )
-            .attr("stroke-width", (p) =>
-              p.timestamp === dataPoint.timestamp ? 2 : 0
-            );
+            .selectAll<SVGCircleElement, DataPoint>("circle:not(.hit-area)")
+            .each(function (p: DataPoint) {
+              const element = d3.select(this);
+              if (p.timestamp === dataPoint.timestamp) {
+                element
+                  .attr("r", 6)
+                  .attr("stroke", theme.palette.background.paper)
+                  .attr("stroke-width", 2);
+              } else {
+                element
+                  .attr("r", 4)
+                  .attr("stroke", "none")
+                  .attr("stroke-width", 0);
+              }
+            });
         })
         .on("mouseout", function () {
           setTimeout(() => {
             tooltip.style("opacity", 0);
+            hoverLine.style("opacity", 0);
           }, 300);
 
           setTimeout(() => {
             points
-              .selectAll("circle:not(.hit-area)")
+              .selectAll<SVGCircleElement, DataPoint>("circle:not(.hit-area)")
               .attr("r", 4)
-              .attr("stroke", "none");
+              .attr("stroke", "none")
+              .attr("stroke-width", 0);
           }, 300);
         });
 
+      // Create hit area for advisory data points
       pointGroup
         .append("circle")
-        .attr("cx", (d) => x(new Date(d.timestamp)))
-        .attr("cy", (d) => y(d.advisories))
+        .attr("cx", () => x(new Date(d.timestamp)))
+        .attr("cy", () => y(d.advisories))
         .attr("r", 15)
         .attr("fill", "transparent")
         .attr("class", "hit-area")
         .style("pointer-events", "all")
         .datum(d)
-        .on("mouseover", function (event, dataPoint) {
+        .on("mouseover", function (event: d3.D3Event, dataPoint: DataPoint) {
           const xPos = x(new Date(dataPoint.timestamp));
           const minYValue = Math.min(
             y(dataPoint.cves),
@@ -365,34 +413,43 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
 
           hoverLine.attr("x1", xPos).attr("x2", xPos).style("opacity", 1);
 
+          // Highlight the data point
           points
-            .selectAll("circle:not(.hit-area)")
-            .attr("r", (p) => (p.timestamp === dataPoint.timestamp ? 6 : 4))
-            .attr("stroke", (p) =>
-              p.timestamp === dataPoint.timestamp
-                ? theme.palette.background.paper
-                : "none"
-            )
-            .attr("stroke-width", (p) =>
-              p.timestamp === dataPoint.timestamp ? 2 : 0
-            );
+            .selectAll<SVGCircleElement, DataPoint>("circle:not(.hit-area)")
+            .each(function (p: DataPoint) {
+              const element = d3.select(this);
+              if (p.timestamp === dataPoint.timestamp) {
+                element
+                  .attr("r", 6)
+                  .attr("stroke", theme.palette.background.paper)
+                  .attr("stroke-width", 2);
+              } else {
+                element
+                  .attr("r", 4)
+                  .attr("stroke", "none")
+                  .attr("stroke-width", 0);
+              }
+            });
         })
         .on("mouseout", function () {
           setTimeout(() => {
             tooltip.style("opacity", 0);
+            hoverLine.style("opacity", 0);
           }, 300);
 
           setTimeout(() => {
             points
-              .selectAll("circle:not(.hit-area)")
+              .selectAll<SVGCircleElement, DataPoint>("circle:not(.hit-area)")
               .attr("r", 4)
-              .attr("stroke", "none");
+              .attr("stroke", "none")
+              .attr("stroke-width", 0);
           }, 300);
         });
     });
 
+    // Add mouse tracking over the entire chart area
     d3.select(svgRef.current)
-      .on("mousemove", function (event) {
+      .on("mousemove", function (event: MouseEvent) {
         const gElement = g.node();
         if (!gElement) return;
         const [mouseX] = d3.pointer(event, gElement);
@@ -412,17 +469,26 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
 
         // Reset points
         points
-          .selectAll("circle:not(.hit-area)")
+          .selectAll<SVGCircleElement, DataPoint>("circle:not(.hit-area)")
           .attr("r", 4)
-          .attr("stroke", "none");
+          .attr("stroke", "none")
+          .attr("stroke-width", 0);
       });
   }, [data, height, theme]); // Added theme to dependencies
+
+  // We need to memoize the isMobile check for the component render
+  const containerWidth =
+    typeof window !== "undefined" ? window.innerWidth : 800;
+  const isMobileView = containerWidth < 500;
+  const mobileHeight = isMobileView
+    ? Math.max(height, containerWidth * 0.8)
+    : height;
 
   return (
     <Paper
       elevation={2}
       sx={{
-        p: 2,
+        p: isMobileView ? 1.5 : 2,
         borderRadius: 2,
         position: "relative",
         overflow: "hidden",
@@ -432,16 +498,25 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
         Security Metrics Timeline
       </Typography>
 
-      <Box sx={{ position: "relative" }}>
+      <Box
+        sx={{
+          position: "relative",
+          minHeight: isMobileView ? mobileHeight : "auto",
+          "&:focus": { outline: "none" },
+          "&:focus-visible": { outline: "none" },
+        }}
+      >
         <svg
           ref={svgRef}
           width="100%"
-          height={height}
+          height={mobileHeight}
           tabIndex={-1} // Make SVG non-focusable
           style={{
             display: "block",
             maxWidth: "100%",
+            outline: "none", // Remove focus outline
           }}
+          onClick={(e) => e.currentTarget.blur()} // Remove focus when clicked
         />
       </Box>
     </Paper>
