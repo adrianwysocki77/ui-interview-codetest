@@ -1,7 +1,14 @@
 import { FC, useEffect, useRef } from "react";
 import * as d3 from "d3";
-import { DataPoint } from "@/types/graphql";
 import { Box, Paper, Typography, useTheme } from "@mui/material";
+
+// Define the shape of our data points
+interface DataPoint {
+  timestamp: string;
+  cves: number;
+  advisories: number;
+  id?: string; // Optional ID property that might be in the original DataPoint
+}
 
 export type TimeSeriesChartProps = {
   /**
@@ -50,7 +57,7 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
     const innerHeight = height - margin.top - margin.bottom;
 
     // Parse ISO timestamp strings to Date objects
-    const parseDate = (d: string) => new Date(d);
+    const parseDate = (d: string): Date => new Date(d);
 
     // Scales
     const x = d3
@@ -59,7 +66,11 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
       .range([0, innerWidth]);
 
     const yMax = d3.max(data, (d) => Math.max(d.cves, d.advisories)) ?? 0;
-    const y = d3.scaleLinear().domain([0, yMax]).nice().range([innerHeight, 0]);
+    const y = d3
+      .scaleLinear()
+      .domain([0, yMax * 1.1])
+      .nice()
+      .range([innerHeight, 0]);
 
     // Line generators
     const lineCves = d3
@@ -154,6 +165,51 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
       .text("Advisories")
       .attr("fill", axisColor);
 
+    // Create tooltip
+    const tooltip = g.append("g").attr("class", "tooltip").style("opacity", 0);
+
+    tooltip
+      .append("rect")
+      .attr("width", 150)
+      .attr("height", 70)
+      .attr("fill", theme.palette.background.paper)
+      .attr("rx", 4)
+      .attr("ry", 4)
+      .attr("stroke", theme.palette.divider)
+      .attr("stroke-width", 1);
+
+    const tooltipTitle = tooltip
+      .append("text")
+      .attr("x", 10)
+      .attr("y", 20)
+      .attr("font-weight", "bold")
+      .attr("font-size", "12px")
+      .attr("fill", theme.palette.text.primary);
+
+    const tooltipCVEs = tooltip
+      .append("text")
+      .attr("x", 10)
+      .attr("y", 40)
+      .attr("font-size", "12px")
+      .attr("fill", primaryColor);
+
+    const tooltipAdvisories = tooltip
+      .append("text")
+      .attr("x", 10)
+      .attr("y", 60)
+      .attr("font-size", "12px")
+      .attr("fill", errorColor);
+
+    // Format date for tooltips
+    const formatDate = (isoString: string): string => {
+      const date = new Date(isoString);
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    };
+
     // Vertical hover line (crosshair)
     const hoverLine = g
       .append("line")
@@ -203,58 +259,8 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
       .ease(d3.easeLinear)
       .attr("stroke-dashoffset", 0);
 
-    // Create tooltip elements - make it more visible and ensure it doesn't interfere with mouse events
-    const tooltip = svg
-      .append("g")
-      .attr("class", "tooltip")
-      .style("opacity", 0)
-      .style("pointer-events", "none");
-
-    tooltip
-      .append("rect")
-      .attr("width", 160)
-      .attr("height", 80)
-      .attr("rx", 5)
-      .attr("ry", 5)
-      .attr("fill", theme.palette.background.paper)
-      .attr("stroke", theme.palette.divider)
-      .attr("stroke-width", 1.5) // Make border more visible
-      .style("filter", "drop-shadow(0px 2px 3px rgba(0,0,0,0.2))");
-
-    const tooltipTitle = tooltip
-      .append("text")
-      .attr("x", 10)
-      .attr("y", 20)
-      .attr("font-size", "12px")
-      .attr("font-weight", "bold")
-      .attr("fill", theme.palette.text.primary);
-
-    const tooltipCVEs = tooltip
-      .append("text")
-      .attr("x", 10)
-      .attr("y", 40)
-      .attr("font-size", "12px")
-      .attr("fill", primaryColor);
-
-    const tooltipAdvisories = tooltip
-      .append("text")
-      .attr("x", 10)
-      .attr("y", 60)
-      .attr("font-size", "12px")
-      .attr("fill", errorColor);
-
-    // Format date for tooltips
-    const formatDate = (isoString: string) => {
-      const date = new Date(isoString);
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-    };
-
     const points = g
-      .selectAll(".data-point")
+      .selectAll<SVGGElement, DataPoint>(".data-point")
       .data(data)
       .enter()
       .append("g")
@@ -263,39 +269,41 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
 
     points
       .append("circle")
-      .attr("cx", (d) => x(new Date(d.timestamp)))
-      .attr("cy", (d) => y(d.cves))
+      .attr("cx", (d: DataPoint) => x(new Date(d.timestamp)))
+      .attr("cy", (d: DataPoint) => y(d.cves))
       .attr("r", 0)
       .attr("fill", theme.palette.primary.main)
       .transition()
-      .delay((_, i) => i * 100)
+      .delay((_d, i: number) => i * 100)
       .duration(500)
       .attr("r", 4);
 
     points
       .append("circle")
-      .attr("cx", (d) => x(new Date(d.timestamp)))
-      .attr("cy", (d) => y(d.advisories))
+      .attr("cx", (d: DataPoint) => x(new Date(d.timestamp)))
+      .attr("cy", (d: DataPoint) => y(d.advisories))
       .attr("r", 0)
       .attr("fill", theme.palette.error.main)
       .transition()
-      .delay((_, i) => i * 100)
+      .delay((_d, i: number) => i * 100)
       .duration(500)
       .attr("r", 4);
 
-    points.each(function (d) {
+    // Add hit areas and interactions
+    points.each(function (d: DataPoint) {
       const pointGroup = d3.select(this);
 
+      // Create hit area for CVE data points
       pointGroup
         .append("circle")
-        .attr("cx", (d) => x(new Date(d.timestamp)))
-        .attr("cy", (d) => y(d.cves))
+        .attr("cx", () => x(new Date(d.timestamp)))
+        .attr("cy", () => y(d.cves))
         .attr("r", 15)
         .attr("fill", "transparent")
         .attr("class", "hit-area")
         .style("pointer-events", "all")
         .datum(d)
-        .on("mouseover", function (event, dataPoint) {
+        .on("mouseover", function (event: d3.D3Event, dataPoint: DataPoint) {
           const xPos = x(new Date(dataPoint.timestamp));
           const minYValue = Math.min(
             y(dataPoint.cves),
@@ -313,41 +321,50 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
 
           hoverLine.attr("x1", xPos).attr("x2", xPos).style("opacity", 1);
 
+          // Highlight the data point
           points
-            .selectAll("circle:not(.hit-area)")
-            .attr("r", (p) => (p.timestamp === dataPoint.timestamp ? 6 : 4))
-            .attr("stroke", (p) =>
-              p.timestamp === dataPoint.timestamp
-                ? theme.palette.background.paper
-                : "none"
-            )
-            .attr("stroke-width", (p) =>
-              p.timestamp === dataPoint.timestamp ? 2 : 0
-            );
+            .selectAll<SVGCircleElement, DataPoint>("circle:not(.hit-area)")
+            .each(function (p: DataPoint) {
+              const element = d3.select(this);
+              if (p.timestamp === dataPoint.timestamp) {
+                element
+                  .attr("r", 6)
+                  .attr("stroke", theme.palette.background.paper)
+                  .attr("stroke-width", 2);
+              } else {
+                element
+                  .attr("r", 4)
+                  .attr("stroke", "none")
+                  .attr("stroke-width", 0);
+              }
+            });
         })
         .on("mouseout", function () {
           setTimeout(() => {
             tooltip.style("opacity", 0);
+            hoverLine.style("opacity", 0);
           }, 300);
 
           setTimeout(() => {
             points
-              .selectAll("circle:not(.hit-area)")
+              .selectAll<SVGCircleElement, DataPoint>("circle:not(.hit-area)")
               .attr("r", 4)
-              .attr("stroke", "none");
+              .attr("stroke", "none")
+              .attr("stroke-width", 0);
           }, 300);
         });
 
+      // Create hit area for advisory data points
       pointGroup
         .append("circle")
-        .attr("cx", (d) => x(new Date(d.timestamp)))
-        .attr("cy", (d) => y(d.advisories))
+        .attr("cx", () => x(new Date(d.timestamp)))
+        .attr("cy", () => y(d.advisories))
         .attr("r", 15)
         .attr("fill", "transparent")
         .attr("class", "hit-area")
         .style("pointer-events", "all")
         .datum(d)
-        .on("mouseover", function (event, dataPoint) {
+        .on("mouseover", function (event: d3.D3Event, dataPoint: DataPoint) {
           const xPos = x(new Date(dataPoint.timestamp));
           const minYValue = Math.min(
             y(dataPoint.cves),
@@ -365,34 +382,43 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
 
           hoverLine.attr("x1", xPos).attr("x2", xPos).style("opacity", 1);
 
+          // Highlight the data point
           points
-            .selectAll("circle:not(.hit-area)")
-            .attr("r", (p) => (p.timestamp === dataPoint.timestamp ? 6 : 4))
-            .attr("stroke", (p) =>
-              p.timestamp === dataPoint.timestamp
-                ? theme.palette.background.paper
-                : "none"
-            )
-            .attr("stroke-width", (p) =>
-              p.timestamp === dataPoint.timestamp ? 2 : 0
-            );
+            .selectAll<SVGCircleElement, DataPoint>("circle:not(.hit-area)")
+            .each(function (p: DataPoint) {
+              const element = d3.select(this);
+              if (p.timestamp === dataPoint.timestamp) {
+                element
+                  .attr("r", 6)
+                  .attr("stroke", theme.palette.background.paper)
+                  .attr("stroke-width", 2);
+              } else {
+                element
+                  .attr("r", 4)
+                  .attr("stroke", "none")
+                  .attr("stroke-width", 0);
+              }
+            });
         })
         .on("mouseout", function () {
           setTimeout(() => {
             tooltip.style("opacity", 0);
+            hoverLine.style("opacity", 0);
           }, 300);
 
           setTimeout(() => {
             points
-              .selectAll("circle:not(.hit-area)")
+              .selectAll<SVGCircleElement, DataPoint>("circle:not(.hit-area)")
               .attr("r", 4)
-              .attr("stroke", "none");
+              .attr("stroke", "none")
+              .attr("stroke-width", 0);
           }, 300);
         });
     });
 
+    // Add mouse tracking over the entire chart area
     d3.select(svgRef.current)
-      .on("mousemove", function (event) {
+      .on("mousemove", function (event: MouseEvent) {
         const gElement = g.node();
         if (!gElement) return;
         const [mouseX] = d3.pointer(event, gElement);
@@ -412,9 +438,10 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
 
         // Reset points
         points
-          .selectAll("circle:not(.hit-area)")
+          .selectAll<SVGCircleElement, DataPoint>("circle:not(.hit-area)")
           .attr("r", 4)
-          .attr("stroke", "none");
+          .attr("stroke", "none")
+          .attr("stroke-width", 0);
       });
   }, [data, height, theme]); // Added theme to dependencies
 
