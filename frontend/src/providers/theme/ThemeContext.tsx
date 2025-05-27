@@ -27,8 +27,7 @@ type ThemeProviderWrapperProps = {
 export const ThemeProviderWrapper: FC<ThemeProviderWrapperProps> = ({
   children,
 }) => {
-  const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode
-
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const theme = createTheme({
     palette: {
       mode: isDarkMode ? "dark" : "light",
