@@ -424,25 +424,6 @@ export const useTimeSeriesD3 = (
       .attr("fill", errorColor)
       .style("opacity", 0);
 
-    // UPDATE + ENTER - position all points with transition
-    const allPoints = pointGroups.merge(pointEnter);
-
-    // Update CVE points
-    allPoints
-      .select(".cve-point")
-      .transition()
-      .duration(750)
-      .attr("cx", (d) => x(parseDate(d.timestamp)))
-      .attr("cy", (d) => y(d.cves));
-
-    // Update Advisory points
-    allPoints
-      .select(".advisory-point")
-      .transition()
-      .duration(750)
-      .attr("cx", (d) => x(parseDate(d.timestamp)))
-      .attr("cy", (d) => y(d.advisories));
-
     // Add hit areas for each new point group
     pointEnter.each(function (d: DataPoint) {
       const pointGroup = d3.select(this);
@@ -466,11 +447,11 @@ export const useTimeSeriesD3 = (
         .datum(d);
     });
 
-    // UPDATE + ENTER: All Points
-    const allPointsWithHitAreas = pointGroups.merge(pointEnter);
+    // UPDATE + ENTER - position all points with transition
+    const allPoints = pointGroups.merge(pointEnter);
 
     // Update CVE points
-    allPointsWithHitAreas
+    allPoints
       .select(".cve-point")
       .transition()
       .duration(750)
@@ -478,7 +459,7 @@ export const useTimeSeriesD3 = (
       .attr("cy", (d) => y(d.cves));
 
     // Update Advisory points
-    allPointsWithHitAreas
+    allPoints
       .select(".advisory-point")
       .transition()
       .duration(750)
@@ -486,12 +467,12 @@ export const useTimeSeriesD3 = (
       .attr("cy", (d) => y(d.advisories));
 
     // Update hit area positions
-    allPointsWithHitAreas
+    allPoints
       .select(".cve-hit-area")
       .attr("cx", (d) => x(parseDate(d.timestamp)))
       .attr("cy", (d) => y(d.cves));
 
-    allPointsWithHitAreas
+    allPoints
       .select(".advisory-hit-area")
       .attr("cx", (d) => x(parseDate(d.timestamp)))
       .attr("cy", (d) => y(d.advisories));
