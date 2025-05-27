@@ -1,4 +1,4 @@
-import { useEffect, RefObject } from "react";
+import { useEffect, RefObject, useRef } from "react";
 import * as d3 from "d3";
 import { Theme } from "@mui/material";
 import { DataPoint } from "./types";
@@ -14,11 +14,38 @@ export const useTimeSeriesD3 = (
   height: number,
   theme: Theme
 ) => {
+  // Store chart elements that should persist between renders
+  const chartRef = useRef<{
+    initialized: boolean;
+    svg?: d3.Selection<SVGSVGElement, unknown, null, undefined>;
+    chartGroup?: d3.Selection<SVGGElement, unknown, null, undefined>;
+    xAxis?: d3.Selection<SVGGElement, unknown, null, undefined>;
+    yAxis?: d3.Selection<SVGGElement, unknown, null, undefined>;
+    tooltip?: d3.Selection<SVGGElement, unknown, null, undefined>;
+    tooltipTitle?: d3.Selection<SVGTextElement, unknown, null, undefined>;
+    tooltipCVEs?: d3.Selection<SVGTextElement, unknown, null, undefined>;
+    tooltipAdvisories?: d3.Selection<SVGTextElement, unknown, null, undefined>;
+    hoverLine?: d3.Selection<SVGLineElement, unknown, null, undefined>;
+    dynamicContent?: d3.Selection<SVGGElement, unknown, null, undefined>;
+  }>({ initialized: false });
+
+  // Store dimension values for reuse
+  const dimensionsRef = useRef<{
+    width: number;
+    innerWidth: number;
+    innerHeight: number;
+    isMobile: boolean;
+  }>({ width: 0, innerWidth: 0, innerHeight: 0, isMobile: false });
+
+  // One-time setup effect - creates static elements
   useEffect(() => {
     if (!svgRef.current || !data.length) return;
 
-    const svg = d3.select(svgRef.current);
-    svg.selectAll("*").remove(); // Clear previous chart
+    // Initialize or reference the SVG
+    chartRef.current.svg = d3.select(svgRef.current);
+
+    // Only initialize once
+    if (chartRef.current.initialized) return;
 
     // Check if we're on mobile for responsive adjustments
     const width = svgRef.current.clientWidth || 800; // fallback
@@ -39,65 +66,47 @@ export const useTimeSeriesD3 = (
     const errorColor = theme.palette.error.main;
     const axisColor = theme.palette.text.secondary;
 
-    // Create scales
-    const x = d3
-      .scaleTime()
-      .domain(d3.extent(data, (d) => parseDate(d.timestamp)) as [Date, Date])
-      .range([0, innerWidth]);
+    // Store dimensions for reuse
+    dimensionsRef.current = {
+      width,
+      innerWidth,
+      innerHeight,
+      isMobile,
+    };
 
-    const yMax = d3.max(data, (d) => Math.max(d.cves, d.advisories)) ?? 0;
-    const y = d3
-      .scaleLinear()
-      .domain([0, yMax * 1.1])
-      .nice()
-      .range([innerHeight, 0]);
+    // Get the SVG selection
+    const svg = chartRef.current.svg;
+    if (!svg) return;
 
-    // Line generators
-    const lineCves = d3
-      .line<DataPoint>()
-      .x((d) => x(parseDate(d.timestamp)))
-      .y((d) => y(d.cves))
-      .curve(d3.curveMonotoneX);
-
-    const lineAdvisories = d3
-      .line<DataPoint>()
-      .x((d) => x(parseDate(d.timestamp)))
-      .y((d) => y(d.advisories))
-      .curve(d3.curveMonotoneX);
+    // We've already created the scales above, no need to duplicate this code
 
     // Set up the SVG and main group
-    const g = svg
+    svg
       .attr("viewBox", `0 0 ${width} ${adjustedHeight}`)
-      .attr("preserveAspectRatio", "xMinYMin meet")
+      .attr("preserveAspectRatio", "xMinYMin meet");
+
+    const g = svg
       .append("g")
+      .attr("class", "chart-container")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Add background grid
-    g.append("g")
-      .attr("class", "grid")
-      .selectAll("line")
-      .data(y.ticks(6))
-      .enter()
-      .append("line")
-      .attr("x1", 0)
-      .attr("x2", innerWidth)
-      .attr("y1", (d) => y(d))
-      .attr("y2", (d) => y(d))
-      .attr("stroke", theme.palette.divider)
-      .attr("stroke-width", 0.5)
-      .attr("stroke-dasharray", "3,3");
+    // Store the main group reference
+    chartRef.current.chartGroup = g;
+    chartRef.current.dynamicContent = g
+      .append("g")
+      .attr("class", "dynamic-content");
 
-    // Add X-axis
-    g.append("g")
-      .attr("transform", `translate(0,${innerHeight})`)
-      .call(
-        d3
-          .axisBottom(x)
-          .ticks(isMobile ? 4 : 6)
-          .tickSizeOuter(0)
-      )
-      .attr("color", axisColor)
-      .attr("font-size", isMobile ? "10px" : "12px")
+    // Add background grid group (content will be populated in data effect)
+    g.append("g").attr("class", "grid");
+
+    // Add X-axis group (content will be set in data effect)
+    const xAxisGroup = g
+      .append("g")
+      .attr("class", "x-axis")
+      .attr("transform", `translate(0,${innerHeight})`);
+
+    // Add axis title
+    xAxisGroup
       .append("text")
       .attr("fill", axisColor)
       .attr("text-anchor", "middle")
@@ -105,11 +114,13 @@ export const useTimeSeriesD3 = (
       .attr("y", 30)
       .text("Date");
 
-    // Add Y-axis
-    g.append("g")
-      .call(d3.axisLeft(y).ticks(6))
-      .attr("color", axisColor)
-      .attr("font-size", isMobile ? "10px" : "12px")
+    chartRef.current.xAxis = xAxisGroup;
+
+    // Add Y-axis group (content will be set in data effect)
+    const yAxisGroup = g.append("g").attr("class", "y-axis");
+
+    // Add axis title
+    yAxisGroup
       .append("text")
       .attr("fill", axisColor)
       .attr("text-anchor", "middle")
@@ -117,6 +128,8 @@ export const useTimeSeriesD3 = (
       .attr("x", -innerHeight / 2)
       .attr("y", -35)
       .text("Count");
+
+    chartRef.current.yAxis = yAxisGroup;
 
     // Add legend
     const legend = g
@@ -165,43 +178,15 @@ export const useTimeSeriesD3 = (
       .style("pointer-events", "none")
       .style("opacity", 0);
 
-    // Draw the CVE line with animation
-    const cveLine = g
-      .append("path")
-      .datum(data)
-      .attr("fill", "none")
-      .attr("stroke", primaryColor)
-      .attr("stroke-width", 2)
-      .attr("d", lineCves);
+    chartRef.current.hoverLine = hoverLine;
 
-    // Animate CVE path
-    const cvePathLength = cveLine.node()?.getTotalLength() || 0;
-    cveLine
-      .attr("stroke-dasharray", cvePathLength)
-      .attr("stroke-dashoffset", cvePathLength)
-      .transition()
-      .duration(1000)
-      .ease(d3.easeLinear)
-      .attr("stroke-dashoffset", 0);
+    // Make sure dynamic content container exists
+    if (!chartRef.current.dynamicContent) {
+      chartRef.current.dynamicContent = g.select(".dynamic-content");
+    }
 
-    // Draw the Advisory line with animation
-    const advisoryLine = g
-      .append("path")
-      .datum(data)
-      .attr("fill", "none")
-      .attr("stroke", errorColor)
-      .attr("stroke-width", 2)
-      .attr("d", lineAdvisories);
-
-    // Animate Advisory path
-    const advisoryPathLength = advisoryLine.node()?.getTotalLength() || 0;
-    advisoryLine
-      .attr("stroke-dasharray", advisoryPathLength)
-      .attr("stroke-dashoffset", advisoryPathLength)
-      .transition()
-      .duration(1000)
-      .ease(d3.easeLinear)
-      .attr("stroke-dashoffset", 0);
+    // Mark as initialized
+    chartRef.current.initialized = true;
 
     // Create tooltip INSIDE chart group so coordinates match x/y scales
     const tooltip = g
@@ -223,6 +208,7 @@ export const useTimeSeriesD3 = (
 
     const tooltipTitle = tooltip
       .append("text")
+      .attr("class", "tooltip-title")
       .attr("x", 10)
       .attr("y", 20)
       .attr("font-size", "12px")
@@ -231,6 +217,7 @@ export const useTimeSeriesD3 = (
 
     const tooltipCVEs = tooltip
       .append("text")
+      .attr("class", "tooltip-cves")
       .attr("x", 10)
       .attr("y", 40)
       .attr("font-size", "12px")
@@ -238,37 +225,276 @@ export const useTimeSeriesD3 = (
 
     const tooltipAdvisories = tooltip
       .append("text")
+      .attr("class", "tooltip-advisories")
       .attr("x", 10)
       .attr("y", 60)
       .attr("font-size", "12px")
       .attr("fill", errorColor);
 
-    // Create data points
-    const points = g
-      .selectAll(".data-point")
-      .data(data)
+    // Store tooltip references
+    chartRef.current.tooltip = tooltip;
+    chartRef.current.tooltipTitle = tooltipTitle;
+    chartRef.current.tooltipCVEs = tooltipCVEs;
+    chartRef.current.tooltipAdvisories = tooltipAdvisories;
+
+    // Store dimensions for reuse
+    dimensionsRef.current = {
+      width,
+      innerWidth,
+      innerHeight,
+      isMobile,
+    };
+  }, [data.length, height, theme, svgRef]);
+
+  // Data-dependent update effect
+  useEffect(() => {
+    if (!svgRef.current || !data.length || !chartRef.current.initialized)
+      return;
+
+    // Reference to main chart elements
+    const g = chartRef.current.chartGroup;
+    const dynamicContent = chartRef.current.dynamicContent;
+
+    if (!g || !dynamicContent) return;
+
+    // Access stored references
+    const svg = chartRef.current.svg;
+    if (!svg) return;
+    const width = svgRef.current.clientWidth || 800;
+    const isMobile = width < 500;
+
+    // Adjust margins based on screen width
+    const margin = isMobile
+      ? { top: 15, right: 30, bottom: 30, left: 40 }
+      : { top: 20, right: 50, bottom: 40, left: 60 };
+
+    const adjustedHeight = isMobile ? Math.max(height, width * 0.8) : height;
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = adjustedHeight - margin.top - margin.bottom;
+
+    // Colors from theme
+    const primaryColor = theme.palette.primary.main;
+    const errorColor = theme.palette.error.main;
+    const axisColor = theme.palette.text.secondary;
+
+    // Update scales with new data
+    const x = d3
+      .scaleTime()
+      .domain(d3.extent(data, (d) => parseDate(d.timestamp)) as [Date, Date])
+      .range([0, innerWidth]);
+
+    const yMax = d3.max(data, (d) => Math.max(d.cves, d.advisories)) ?? 0;
+    const y = d3
+      .scaleLinear()
+      .domain([0, yMax * 1.1])
+      .nice()
+      .range([innerHeight, 0]);
+
+    // Update grid with transition
+    const grid = g.select(".grid");
+    const gridLines = grid
+      .selectAll<SVGLineElement, number>("line")
+      .data(y.ticks(6));
+
+    // Exit - remove any extra grid lines
+    gridLines.exit().remove();
+
+    // Enter - add new grid lines
+    const gridEnter = gridLines
+      .enter()
+      .append("line")
+      .attr("x1", 0)
+      .attr("x2", innerWidth)
+      .attr("stroke", theme.palette.divider)
+      .attr("stroke-width", 0.5)
+      .attr("stroke-dasharray", "3,3");
+
+    // Update - position all grid lines (new and existing)
+    gridEnter
+      .merge(gridLines)
+      .transition()
+      .duration(750)
+      .attr("y1", (d) => y(d))
+      .attr("y2", (d) => y(d));
+
+    // Update X-axis with transition
+    if (chartRef.current.xAxis) {
+      chartRef.current.xAxis
+        .transition()
+        .duration(750)
+        .call(
+          d3
+            .axisBottom(x)
+            .ticks(isMobile ? 4 : 6)
+            .tickSizeOuter(0)
+        )
+        .attr("color", axisColor)
+        .attr("font-size", isMobile ? "10px" : "12px");
+    }
+
+    // Update Y-axis with transition
+    if (chartRef.current.yAxis) {
+      chartRef.current.yAxis
+        .transition()
+        .duration(750)
+        .call(d3.axisLeft(y).ticks(6))
+        .attr("color", axisColor)
+        .attr("font-size", isMobile ? "10px" : "12px");
+    }
+
+    // Line generators
+    const lineCves = d3
+      .line<DataPoint>()
+      .x((d) => x(parseDate(d.timestamp)))
+      .y((d) => y(d.cves))
+      .curve(d3.curveMonotoneX);
+
+    const lineAdvisories = d3
+      .line<DataPoint>()
+      .x((d) => x(parseDate(d.timestamp)))
+      .y((d) => y(d.advisories))
+      .curve(d3.curveMonotoneX);
+
+    // DATA JOIN: CVE Line
+    const cveLine = dynamicContent
+      .selectAll<SVGPathElement, DataPoint[]>(".line-cves")
+      .data([data]); // Wrap in array because we want a single path
+
+    // ENTER: CVE Line
+    const cveEnter = cveLine
+      .enter()
+      .append("path")
+      .attr("class", "line-cves")
+      .attr("fill", "none")
+      .attr("stroke", primaryColor)
+      .attr("stroke-width", 2);
+
+    // UPDATE + ENTER: CVE Line
+    cveLine.merge(cveEnter).transition().duration(750).attr("d", lineCves);
+
+    // DATA JOIN: Advisory Line
+    const advLine = dynamicContent
+      .selectAll<SVGPathElement, DataPoint[]>(".line-advisories")
+      .data([data]);
+
+    // ENTER: Advisory Line
+    const advEnter = advLine
+      .enter()
+      .append("path")
+      .attr("class", "line-advisories")
+      .attr("fill", "none")
+      .attr("stroke", errorColor)
+      .attr("stroke-width", 2);
+
+    // UPDATE + ENTER: Advisory Line
+    advLine
+      .merge(advEnter)
+      .transition()
+      .duration(750)
+      .attr("d", lineAdvisories);
+
+    // DATA JOIN: Point Groups (keyed by timestamp for proper updating)
+    const pointGroups = dynamicContent
+      .selectAll<SVGGElement, DataPoint>(".data-point")
+      .data(data, (d: DataPoint) => d.timestamp);
+
+    // EXIT: Point Groups
+    pointGroups.exit().transition().duration(300).style("opacity", 0).remove();
+
+    // ENTER: Point Groups
+    const pointEnter = pointGroups
       .enter()
       .append("g")
       .attr("class", "data-point")
       .style("cursor", "pointer");
 
-    // Add CVE data points (initially hidden)
-    points
+    // Add CVE point circles to each group (initially hidden)
+    pointEnter
       .append("circle")
-      .attr("cx", (d: DataPoint) => x(parseDate(d.timestamp)))
-      .attr("cy", (d: DataPoint) => y(d.cves))
+      .attr("class", "cve-point")
       .attr("r", 4)
       .attr("fill", primaryColor)
       .style("opacity", 0);
 
-    // Add Advisory data points (initially hidden)
-    points
+    // Add Advisory point circles to each group (initially hidden)
+    pointEnter
       .append("circle")
-      .attr("cx", (d: DataPoint) => x(parseDate(d.timestamp)))
-      .attr("cy", (d: DataPoint) => y(d.advisories))
+      .attr("class", "advisory-point")
       .attr("r", 4)
       .attr("fill", errorColor)
       .style("opacity", 0);
+
+    // UPDATE + ENTER - position all points with transition
+    const allPoints = pointGroups.merge(pointEnter);
+
+    // Update CVE points
+    allPoints
+      .select(".cve-point")
+      .transition()
+      .duration(750)
+      .attr("cx", (d) => x(parseDate(d.timestamp)))
+      .attr("cy", (d) => y(d.cves));
+
+    // Update Advisory points
+    allPoints
+      .select(".advisory-point")
+      .transition()
+      .duration(750)
+      .attr("cx", (d) => x(parseDate(d.timestamp)))
+      .attr("cy", (d) => y(d.advisories));
+
+    // Add hit areas for each new point group
+    pointEnter.each(function (d: DataPoint) {
+      const pointGroup = d3.select(this);
+
+      // Add hit area for CVE point
+      pointGroup
+        .append("circle")
+        .attr("class", "cve-hit-area")
+        .attr("r", 15)
+        .attr("fill", "transparent")
+        .style("pointer-events", "all")
+        .datum(d);
+
+      // Add hit area for Advisory point
+      pointGroup
+        .append("circle")
+        .attr("class", "advisory-hit-area")
+        .attr("r", 15)
+        .attr("fill", "transparent")
+        .style("pointer-events", "all")
+        .datum(d);
+    });
+
+    // UPDATE + ENTER: All Points
+    const allPointsWithHitAreas = pointGroups.merge(pointEnter);
+
+    // Update CVE points
+    allPointsWithHitAreas
+      .select(".cve-point")
+      .transition()
+      .duration(750)
+      .attr("cx", (d) => x(parseDate(d.timestamp)))
+      .attr("cy", (d) => y(d.cves));
+
+    // Update Advisory points
+    allPointsWithHitAreas
+      .select(".advisory-point")
+      .transition()
+      .duration(750)
+      .attr("cx", (d) => x(parseDate(d.timestamp)))
+      .attr("cy", (d) => y(d.advisories));
+
+    // Update hit area positions
+    allPointsWithHitAreas
+      .select(".cve-hit-area")
+      .attr("cx", (d) => x(parseDate(d.timestamp)))
+      .attr("cy", (d) => y(d.cves));
+
+    allPointsWithHitAreas
+      .select(".advisory-hit-area")
+      .attr("cx", (d) => x(parseDate(d.timestamp)))
+      .attr("cy", (d) => y(d.advisories));
 
     // Setup the interaction handlers
     const {
@@ -277,12 +503,12 @@ export const useTimeSeriesD3 = (
       handleChartMouseMove,
       handleChartMouseLeave,
     } = createDataPointHandlers(
-      tooltip,
-      tooltipTitle,
-      tooltipCVEs,
-      tooltipAdvisories,
-      hoverLine,
-      points as unknown as d3.Selection<
+      chartRef.current.tooltip!,
+      chartRef.current.tooltipTitle!,
+      chartRef.current.tooltipCVEs!,
+      chartRef.current.tooltipAdvisories!,
+      chartRef.current.hoverLine!,
+      allPoints as unknown as d3.Selection<
         SVGGElement,
         DataPoint,
         null,
@@ -294,40 +520,20 @@ export const useTimeSeriesD3 = (
       data
     );
 
-    // Add interactive hit areas for each data point
-    points.each(function (d: DataPoint) {
-      const pointGroup = d3.select(this);
+    // Apply event handlers to hit areas
+    allPoints
+      .select(".cve-hit-area")
+      .on("mouseover", function (_, d) {
+        handleMouseOver(d);
+      })
+      .on("mouseout", handleMouseOut);
 
-      // Add hit area for CVE point
-      pointGroup
-        .append("circle")
-        .attr("cx", () => x(parseDate(d.timestamp)))
-        .attr("cy", () => y(d.cves))
-        .attr("r", 15)
-        .attr("fill", "transparent")
-        .attr("class", "hit-area")
-        .style("pointer-events", "all")
-        .datum(d)
-        .on("mouseover", function (_, dataPoint) {
-          handleMouseOver(dataPoint);
-        })
-        .on("mouseout", handleMouseOut);
-
-      // Add hit area for Advisory point
-      pointGroup
-        .append("circle")
-        .attr("cx", () => x(parseDate(d.timestamp)))
-        .attr("cy", () => y(d.advisories))
-        .attr("r", 15)
-        .attr("fill", "transparent")
-        .attr("class", "hit-area")
-        .style("pointer-events", "all")
-        .datum(d)
-        .on("mouseover", function (_, dataPoint) {
-          handleMouseOver(dataPoint);
-        })
-        .on("mouseout", handleMouseOut);
-    });
+    allPoints
+      .select(".advisory-hit-area")
+      .on("mouseover", function (_, d) {
+        handleMouseOver(d);
+      })
+      .on("mouseout", handleMouseOut);
 
     // Add mouse tracking over the entire chart
     d3.select(svgRef.current)
@@ -335,5 +541,7 @@ export const useTimeSeriesD3 = (
         handleChartMouseMove(event as MouseEvent, g, innerWidth);
       })
       .on("mouseleave", handleChartMouseLeave);
-  }, [data, height, theme, svgRef]);
+  }, [data, height, theme, svgRef]); // Update when data, height or theme changes
+
+  // The data updates are handled in the main effect
 };
