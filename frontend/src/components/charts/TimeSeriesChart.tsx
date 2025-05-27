@@ -502,6 +502,8 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
         sx={{
           position: "relative",
           minHeight: isMobileView ? mobileHeight : "auto",
+          "&:focus": { outline: "none" },
+          "&:focus-visible": { outline: "none" },
         }}
       >
         <svg
@@ -512,7 +514,9 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
           style={{
             display: "block",
             maxWidth: "100%",
+            outline: "none", // Remove focus outline
           }}
+          onClick={(e) => e.currentTarget.blur()} // Remove focus when clicked
         />
       </Box>
     </Paper>
