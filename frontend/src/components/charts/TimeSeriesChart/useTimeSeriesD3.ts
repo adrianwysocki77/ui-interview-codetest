@@ -111,7 +111,7 @@ export const useTimeSeriesD3 = (
       .attr("fill", axisColor)
       .attr("text-anchor", "middle")
       .attr("x", innerWidth / 2)
-      .attr("y", 30)
+      .attr("y", 40)
       .text("Date");
 
     chartRef.current.xAxis = xAxisGroup;
@@ -278,8 +278,9 @@ export const useTimeSeriesD3 = (
     const axisColor = theme.palette.text.secondary;
 
     // Update scales with new data
+    // Use UTC scale to avoid timezone-induced shifts when rendering points & axis
     const x = d3
-      .scaleTime()
+      .scaleUtc()
       .domain(d3.extent(data, (d) => parseDate(d.timestamp)) as [Date, Date])
       .range([0, innerWidth]);
 
@@ -319,15 +320,31 @@ export const useTimeSeriesD3 = (
 
     // Update X-axis with transition
     if (chartRef.current.xAxis) {
+      // Calculate a reasonable number of ticks based on data length
+      let tickValues = Array.from(
+        new Set(data.map((d) => parseDate(d.timestamp).getTime()))
+      ).map((t) => new Date(t));
+      
+      // If we have many days (e.g. 30 days), only show a subset of dates to prevent overlapping
+      if (tickValues.length > 10) {
+        const step = Math.ceil(tickValues.length / (isMobile ? 5 : 10));
+        tickValues = tickValues.filter((_, i) => i % step === 0);
+      }
+
+      // Create and apply the axis
+      const axis = d3
+        .axisBottom(x as unknown as d3.AxisScale<Date>)
+        .tickValues(tickValues)
+        .tickFormat((domainValue) => d3.timeFormat("%b %d")(domainValue as Date))
+        .tickSizeOuter(0)
+        .tickPadding(10);
+      
       chartRef.current.xAxis
         .transition()
         .duration(750)
-        .call(
-          d3
-            .axisBottom(x)
-            .ticks(isMobile ? 4 : 6)
-            .tickSizeOuter(0)
-        )
+        .call(function(g) {
+          axis(g);
+        })
         .attr("color", axisColor)
         .attr("font-size", isMobile ? "10px" : "12px");
     }
@@ -396,7 +413,7 @@ export const useTimeSeriesD3 = (
     // DATA JOIN: Point Groups (keyed by timestamp for proper updating)
     const pointGroups = dynamicContent
       .selectAll<SVGGElement, DataPoint>(".data-point")
-      .data(data, (d: DataPoint) => d.timestamp);
+      .data(data, (d: DataPoint, i) => d.id ?? `${d.timestamp}-${i}`);
 
     // EXIT: Point Groups
     pointGroups.exit().transition().duration(300).style("opacity", 0).remove();

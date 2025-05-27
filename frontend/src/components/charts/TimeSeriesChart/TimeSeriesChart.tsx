@@ -58,7 +58,6 @@ export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
           ref={svgRef}
           width="100%"
           height={mobileHeight}
-          tabIndex={-1} // Make SVG non-focusable
           style={{
             display: "block",
             maxWidth: "100%",

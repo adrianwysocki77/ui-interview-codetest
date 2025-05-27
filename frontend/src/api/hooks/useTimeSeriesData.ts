@@ -18,7 +18,7 @@ export const useTimeSeriesData = (
     TimeSeriesDataQueryVariables
   >(GET_TIME_SERIES_DATA, {
     variables,
-    // Refresh data every 30 seconds (30000ms) for security updates
+    // Refresh data every 30 seconds (30000ms) 
     pollInterval: 30000,
     onError: handleError,
   });

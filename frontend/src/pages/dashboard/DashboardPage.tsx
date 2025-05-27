@@ -142,13 +142,6 @@ export const DashboardPage: FC = () => {
             </Alert>
           )}
 
-          {!loading && !error && data?.dataPoints?.length === 0 && (
-            <Alert severity="info" sx={{ mb: 2, borderRadius: 1 }}>
-              No data available for the selected filters. Try adjusting your
-              filter criteria.
-            </Alert>
-          )}
-
           {!loading &&
             !error &&
             data?.dataPoints &&
