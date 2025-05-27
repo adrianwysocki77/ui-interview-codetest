@@ -1,9 +1,9 @@
 import { useEffect, RefObject } from "react";
 import * as d3 from "d3";
 import { Theme } from "@mui/material";
-import { DataPoint } from "../types";
-import { parseDate } from "../utils/formatDate";
-import { createDataPointHandlers } from "../utils/interactionHandlers";
+import { DataPoint } from "./types";
+import { parseDate } from "./formatDate";
+import { createDataPointHandlers } from "./interactionHandlers";
 
 /**
  * Hook for rendering the Time Series chart using D3
@@ -23,7 +23,7 @@ export const useTimeSeriesD3 = (
     // Check if we're on mobile for responsive adjustments
     const width = svgRef.current.clientWidth || 800; // fallback
     const isMobile = width < 500;
-    
+
     // Adjust margins based on screen width for better mobile display
     const margin = isMobile
       ? { top: 15, right: 30, bottom: 30, left: 40 } // Smaller margins on mobile
@@ -42,10 +42,10 @@ export const useTimeSeriesD3 = (
     // Create scales
     const x = d3
       .scaleTime()
-      .domain(d3.extent(data, d => parseDate(d.timestamp)) as [Date, Date])
+      .domain(d3.extent(data, (d) => parseDate(d.timestamp)) as [Date, Date])
       .range([0, innerWidth]);
 
-    const yMax = d3.max(data, d => Math.max(d.cves, d.advisories)) ?? 0;
+    const yMax = d3.max(data, (d) => Math.max(d.cves, d.advisories)) ?? 0;
     const y = d3
       .scaleLinear()
       .domain([0, yMax * 1.1])
@@ -55,14 +55,14 @@ export const useTimeSeriesD3 = (
     // Line generators
     const lineCves = d3
       .line<DataPoint>()
-      .x(d => x(parseDate(d.timestamp)))
-      .y(d => y(d.cves))
+      .x((d) => x(parseDate(d.timestamp)))
+      .y((d) => y(d.cves))
       .curve(d3.curveMonotoneX);
 
     const lineAdvisories = d3
       .line<DataPoint>()
-      .x(d => x(parseDate(d.timestamp)))
-      .y(d => y(d.advisories))
+      .x((d) => x(parseDate(d.timestamp)))
+      .y((d) => y(d.advisories))
       .curve(d3.curveMonotoneX);
 
     // Set up the SVG and main group
@@ -81,8 +81,8 @@ export const useTimeSeriesD3 = (
       .append("line")
       .attr("x1", 0)
       .attr("x2", innerWidth)
-      .attr("y1", d => y(d))
-      .attr("y2", d => y(d))
+      .attr("y1", (d) => y(d))
+      .attr("y2", (d) => y(d))
       .attr("stroke", theme.palette.divider)
       .attr("stroke-width", 0.5)
       .attr("stroke-dasharray", "3,3");
@@ -90,7 +90,12 @@ export const useTimeSeriesD3 = (
     // Add X-axis
     g.append("g")
       .attr("transform", `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(x).ticks(isMobile ? 4 : 6).tickSizeOuter(0))
+      .call(
+        d3
+          .axisBottom(x)
+          .ticks(isMobile ? 4 : 6)
+          .tickSizeOuter(0)
+      )
       .attr("color", axisColor)
       .attr("font-size", isMobile ? "10px" : "12px")
       .append("text")
@@ -276,21 +281,26 @@ export const useTimeSeriesD3 = (
       handleMouseOver,
       handleMouseOut,
       handleChartMouseMove,
-      handleChartMouseLeave
+      handleChartMouseLeave,
     } = createDataPointHandlers(
       tooltip,
       tooltipTitle,
       tooltipCVEs,
       tooltipAdvisories,
       hoverLine,
-      points as unknown as d3.Selection<SVGGElement, DataPoint, null, undefined>,
+      points as unknown as d3.Selection<
+        SVGGElement,
+        DataPoint,
+        null,
+        undefined
+      >,
       x,
       y,
       theme
     );
 
     // Add interactive hit areas for each data point
-    points.each(function(d: DataPoint) {
+    points.each(function (d: DataPoint) {
       const pointGroup = d3.select(this);
 
       // Add hit area for CVE point
@@ -303,7 +313,7 @@ export const useTimeSeriesD3 = (
         .attr("class", "hit-area")
         .style("pointer-events", "all")
         .datum(d)
-        .on("mouseover", function(event, dataPoint) {
+        .on("mouseover", function (event, dataPoint) {
           handleMouseOver(event as MouseEvent, dataPoint);
         })
         .on("mouseout", handleMouseOut);
@@ -318,7 +328,7 @@ export const useTimeSeriesD3 = (
         .attr("class", "hit-area")
         .style("pointer-events", "all")
         .datum(d)
-        .on("mouseover", function(event, dataPoint) {
+        .on("mouseover", function (event, dataPoint) {
           handleMouseOver(event as MouseEvent, dataPoint);
         })
         .on("mouseout", handleMouseOut);
@@ -326,10 +336,9 @@ export const useTimeSeriesD3 = (
 
     // Add mouse tracking over the entire chart
     d3.select(svgRef.current)
-      .on("mousemove", function(event) {
+      .on("mousemove", function (event) {
         handleChartMouseMove(event as MouseEvent, g, innerWidth);
       })
       .on("mouseleave", handleChartMouseLeave);
-
   }, [data, height, theme, svgRef]);
 };

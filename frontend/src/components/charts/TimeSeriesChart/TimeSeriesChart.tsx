@@ -1,7 +1,7 @@
 import { FC, useRef } from "react";
 import { Box, Paper, Typography, useTheme } from "@mui/material";
 import { TimeSeriesChartProps } from "./types";
-import { useTimeSeriesD3 } from "./hooks/useTimeSeriesD3";
+import { useTimeSeriesD3 } from "./useTimeSeriesD3";
 
 /**
  * Responsive line-chart drawn with D3. Shows two metrics (CVEs & Advisories)
@@ -9,18 +9,24 @@ import { useTimeSeriesD3 } from "./hooks/useTimeSeriesD3";
  * palette colours. The component is completely presentational – all data &
  * formatting are provided via props.
  */
-export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({ 
-  data, 
-  height = 400 
+export const TimeSeriesChart: FC<TimeSeriesChartProps> = ({
+  data,
+  height = 400,
 }) => {
   const theme = useTheme();
   const svgRef = useRef<SVGSVGElement>(null);
-  
+
   // Use our custom D3 hook to handle all the chart rendering
-  useTimeSeriesD3(svgRef as React.RefObject<SVGSVGElement>, data, height, theme);
+  useTimeSeriesD3(
+    svgRef as React.RefObject<SVGSVGElement>,
+    data,
+    height,
+    theme
+  );
 
   // Calculate responsive dimensions
-  const containerWidth = typeof window !== "undefined" ? window.innerWidth : 800;
+  const containerWidth =
+    typeof window !== "undefined" ? window.innerWidth : 800;
   const isMobileView = containerWidth < 500;
   const mobileHeight = isMobileView
     ? Math.max(height, containerWidth * 0.8)

@@ -1,6 +1,6 @@
 import * as d3 from "d3";
 import { Theme } from "@mui/material";
-import { DataPoint } from "../types";
+import { DataPoint } from "./types";
 import { formatDate } from "./formatDate";
 
 /**
@@ -20,12 +20,9 @@ export const createDataPointHandlers = (
   /**
    * Handle mouseover on data points
    */
-  const handleMouseOver = function(_: MouseEvent, dataPoint: DataPoint) {
+  const handleMouseOver = function (_: MouseEvent, dataPoint: DataPoint) {
     const xPos = x(new Date(dataPoint.timestamp));
-    const minYValue = Math.min(
-      y(dataPoint.cves),
-      y(dataPoint.advisories)
-    );
+    const minYValue = Math.min(y(dataPoint.cves), y(dataPoint.advisories));
     const yPos = minYValue < 100 ? minYValue + 30 : minYValue - 90;
 
     tooltip
@@ -41,7 +38,7 @@ export const createDataPointHandlers = (
     // Highlight the data point
     points
       .selectAll<SVGCircleElement, DataPoint>("circle:not(.hit-area)")
-      .each(function(p: DataPoint) {
+      .each(function (p: DataPoint) {
         const element = d3.select(this);
         if (p.timestamp === dataPoint.timestamp) {
           element
@@ -49,10 +46,7 @@ export const createDataPointHandlers = (
             .attr("stroke", theme.palette.background.paper)
             .attr("stroke-width", 2);
         } else {
-          element
-            .attr("r", 4)
-            .attr("stroke", "none")
-            .attr("stroke-width", 0);
+          element.attr("r", 4).attr("stroke", "none").attr("stroke-width", 0);
         }
       });
   };
@@ -60,7 +54,7 @@ export const createDataPointHandlers = (
   /**
    * Handle mouseout from data points
    */
-  const handleMouseOut = function() {
+  const handleMouseOut = function () {
     setTimeout(() => {
       tooltip.style("opacity", 0);
       hoverLine.style("opacity", 0);
@@ -78,7 +72,11 @@ export const createDataPointHandlers = (
   /**
    * Handle mouse movement over the chart area
    */
-  const handleChartMouseMove = function(event: MouseEvent, g: d3.Selection<SVGGElement, unknown, null, undefined>, innerWidth: number) {
+  const handleChartMouseMove = function (
+    event: MouseEvent,
+    g: d3.Selection<SVGGElement, unknown, null, undefined>,
+    innerWidth: number
+  ) {
     const gElement = g.node();
     if (!gElement) return;
     const [mouseX] = d3.pointer(event, gElement);
@@ -96,7 +94,7 @@ export const createDataPointHandlers = (
   /**
    * Handle mouse leaving the chart area
    */
-  const handleChartMouseLeave = function() {
+  const handleChartMouseLeave = function () {
     hoverLine.style("opacity", 0);
     tooltip.style("opacity", 0);
 
@@ -112,6 +110,6 @@ export const createDataPointHandlers = (
     handleMouseOver,
     handleMouseOut,
     handleChartMouseMove,
-    handleChartMouseLeave
+    handleChartMouseLeave,
   };
 };

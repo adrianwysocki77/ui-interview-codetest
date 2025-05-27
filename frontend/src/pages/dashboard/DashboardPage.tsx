@@ -12,7 +12,7 @@ import {
 import { TimeSeriesFilters } from "../../components/filters/TimeSeriesFilters";
 import { useTimeSeriesData } from "@/api/hooks/useTimeSeriesData";
 import { TimeRange, CriticalityLevel } from "@/types/graphql";
-import { TimeSeriesChart } from "../../components/charts/TimeSeriesChart";
+import { TimeSeriesChart } from "../../components/charts/TimeSeriesChart/TimeSeriesChart";
 
 export const DashboardPage: FC = () => {
   const theme = useTheme();
