@@ -203,8 +203,8 @@ export const useTimeSeriesD3 = (
       .ease(d3.easeLinear)
       .attr("stroke-dashoffset", 0);
 
-    // Create tooltip
-    const tooltip = svg
+    // Create tooltip INSIDE chart group so coordinates match x/y scales
+    const tooltip = g
       .append("g")
       .attr("class", "tooltip")
       .style("opacity", 0)
@@ -252,29 +252,23 @@ export const useTimeSeriesD3 = (
       .attr("class", "data-point")
       .style("cursor", "pointer");
 
-    // Add CVE data points with animation
+    // Add CVE data points (initially hidden)
     points
       .append("circle")
       .attr("cx", (d: DataPoint) => x(parseDate(d.timestamp)))
       .attr("cy", (d: DataPoint) => y(d.cves))
-      .attr("r", 0)
+      .attr("r", 4)
       .attr("fill", primaryColor)
-      .transition()
-      .delay((_, i) => i * 100)
-      .duration(500)
-      .attr("r", 4);
+      .style("opacity", 0);
 
-    // Add Advisory data points with animation
+    // Add Advisory data points (initially hidden)
     points
       .append("circle")
       .attr("cx", (d: DataPoint) => x(parseDate(d.timestamp)))
       .attr("cy", (d: DataPoint) => y(d.advisories))
-      .attr("r", 0)
+      .attr("r", 4)
       .attr("fill", errorColor)
-      .transition()
-      .delay((_, i) => i * 100)
-      .duration(500)
-      .attr("r", 4);
+      .style("opacity", 0);
 
     // Setup the interaction handlers
     const {
@@ -296,7 +290,8 @@ export const useTimeSeriesD3 = (
       >,
       x,
       y,
-      theme
+      theme,
+      data
     );
 
     // Add interactive hit areas for each data point
@@ -313,8 +308,8 @@ export const useTimeSeriesD3 = (
         .attr("class", "hit-area")
         .style("pointer-events", "all")
         .datum(d)
-        .on("mouseover", function (event, dataPoint) {
-          handleMouseOver(event as MouseEvent, dataPoint);
+        .on("mouseover", function (_, dataPoint) {
+          handleMouseOver(dataPoint);
         })
         .on("mouseout", handleMouseOut);
 
@@ -328,8 +323,8 @@ export const useTimeSeriesD3 = (
         .attr("class", "hit-area")
         .style("pointer-events", "all")
         .datum(d)
-        .on("mouseover", function (event, dataPoint) {
-          handleMouseOver(event as MouseEvent, dataPoint);
+        .on("mouseover", function (_, dataPoint) {
+          handleMouseOver(dataPoint);
         })
         .on("mouseout", handleMouseOut);
     });
