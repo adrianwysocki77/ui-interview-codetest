@@ -12,7 +12,7 @@ import {
 import { TimeSeriesFilters } from "../../components/filters/TimeSeriesFilters";
 import { useTimeSeriesData } from "@/api/hooks/useTimeSeriesData";
 import { TimeRange, CriticalityLevel } from "@/types/graphql";
-import { TimeSeriesChart } from "@/components/charts/TimeSeriesChart";
+import { TimeSeriesChart } from "../../components/charts/TimeSeriesChart/TimeSeriesChart";
 
 export const DashboardPage: FC = () => {
   const theme = useTheme();
@@ -139,13 +139,6 @@ export const DashboardPage: FC = () => {
           {error && !loading && (
             <Alert severity="error" sx={{ mb: 2, borderRadius: 1 }}>
               Error loading security metrics: {error.message}
-            </Alert>
-          )}
-
-          {!loading && !error && data?.dataPoints?.length === 0 && (
-            <Alert severity="info" sx={{ mb: 2, borderRadius: 1 }}>
-              No data available for the selected filters. Try adjusting your
-              filter criteria.
             </Alert>
           )}
 
